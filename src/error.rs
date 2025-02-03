@@ -1,0 +1,40 @@
+//! This module defines the `MonexoCoreError` enum, which represents the possible errors that can occur in the Monexo Core library.
+//!
+//! The `MonexoCoreError` enum is derived from the `Error` trait using the `thiserror` crate, which allows for easy definition of custom error types with automatic conversion to and from other error types.
+//! All of the variants in the `MonexoCoreError` enum implement the `Error` trait, which allows them to be used with the `?` operator for easy error propagation. The enum is also serializable and deserializable using serde.
+
+use base64::DecodeError;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum MonexoCoreError {
+    #[error("Secp256k1Error {0}")]
+    Secp256k1Error(#[from] secp256k1::Error),
+
+    #[error("InvalidTokenType")]
+    InvalidTokenPrefix,
+
+    #[error("Base64DecodeError {0}")]
+    Base64DecodeError(#[from] DecodeError),
+
+    #[error("SerdeJsonError {0}")]
+    SerdeJsonError(#[from] serde_json::Error),
+
+    #[error("Invalid Keysetid")]
+    InvalidKeysetid,
+
+    #[error("Not enough tokens")]
+    NotEnoughTokens,
+
+    #[error("Invalid token")]
+    InvalidToken,
+
+    #[error("No valid point on curve secp256k1 found")]
+    NoValidPointFound,
+
+    #[error("Invalid hex string")]
+    Hex(#[from] hex::FromHexError),
+
+    #[error("Invalid Keyset-ID")]
+    Slice(#[from] std::array::TryFromSliceError),
+}
