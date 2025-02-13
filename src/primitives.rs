@@ -26,7 +26,7 @@ pub struct PostMintQuoteBtcOnchainRequest {
 #[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
 pub struct PostMintQuoteBtcOnchainResponse {
     pub quote: String,
-    // pub address: String,
+    pub reference: String,
     pub state: MintBtcOnchainState,
     pub expiry: u64,
 }
@@ -72,7 +72,7 @@ impl FromStr for MintBtcOnchainState {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BtcOnchainMintQuote {
     pub quote_id: Uuid,
-    // pub address: String,
+    pub reference: String,
     pub unit: CurrencyUnit,
     pub amount: u64,
     pub expiry: u64,
@@ -83,7 +83,7 @@ impl From<BtcOnchainMintQuote> for PostMintQuoteBtcOnchainResponse {
     fn from(quote: BtcOnchainMintQuote) -> Self {
         Self {
             quote: quote.quote_id.to_string(),
-            // address: quote.address,
+            reference: quote.reference,
             state: quote.state,
             expiry: quote.expiry,
         }
