@@ -21,6 +21,8 @@ uuid = { workspace = true, features = ["serde", "v4"] }
 sqlx = { workspace = true, features = ["postgres", "runtime-tokio", "tls-rustls", "migrate", "macros", "uuid"] }
 tokio = { workspace = true, features = ["full"] }
 thiserror = { workspace = true }
+solana-sdk = { workspace = true }
+solana-client = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 

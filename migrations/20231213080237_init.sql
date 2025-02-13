@@ -29,6 +29,7 @@ CREATE TABLE bolt11_melt_quotes (
 
 CREATE TABLE onchain_mint_quotes (
     id uuid NOT NULL,
+    reference text COLLATE pg_catalog."default" NOT NULL,
 	amount bigint NOT NULL,
     expiry bigint NOT NULL,
     state TEXT NOT NULL,

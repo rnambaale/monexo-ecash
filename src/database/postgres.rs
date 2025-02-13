@@ -142,8 +142,9 @@ impl Database for PostgresDB {
         quote: &BtcOnchainMintQuote,
     ) -> Result<(), MonexoMintError> {
         sqlx::query!(
-            "INSERT INTO onchain_mint_quotes (id, amount, expiry, state) VALUES ($1, $2, $3, $4)",
+            "INSERT INTO onchain_mint_quotes (id, reference, amount, expiry, state) VALUES ($1, $2, $3, $4, $5)",
             quote.quote_id,
+            quote.reference,
             quote.amount as i64,
             quote.expiry as i64,
             quote.state.to_string(),
@@ -160,11 +161,12 @@ impl Database for PostgresDB {
         key: &Uuid,
     ) -> Result<BtcOnchainMintQuote, MonexoMintError> {
         let quote: BtcOnchainMintQuote = sqlx::query!(
-            "SELECT id, amount, expiry, state  FROM onchain_mint_quotes WHERE id = $1",
+            "SELECT id, reference, amount, expiry, state  FROM onchain_mint_quotes WHERE id = $1",
             key
         )
         .map(|row| BtcOnchainMintQuote {
             quote_id: row.id,
+            reference: row.reference,
             expiry: row.expiry as u64,
             state: MintBtcOnchainState::from_str(&row.state).expect("invalid state in mint quote"),
             amount: row.amount as u64,

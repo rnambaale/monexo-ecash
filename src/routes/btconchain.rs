@@ -1,7 +1,12 @@
 use std::str::FromStr;
+use solana_client::{nonblocking::rpc_client::RpcClient, rpc_client::GetConfirmedSignaturesForAddress2Config};
+use solana_sdk::pubkey::Pubkey;
+use solana_sdk::{signature::Keypair, signer::Signer};
+use solana_sdk::commitment_config::CommitmentConfig;
 
 use axum::{extract::{Path, State}, Json};
 use monexo_core::primitives::{BtcOnchainMintQuote, MintBtcOnchainState, PostMintBtcOnchainRequest, PostMintBtcOnchainResponse, PostMintQuoteBtcOnchainRequest, PostMintQuoteBtcOnchainResponse};
+// use sqlx::query;
 use tracing::{info, instrument};
 use uuid::Uuid;
 use chrono::{Duration, Utc};
@@ -37,12 +42,12 @@ pub async fn post_mint_quote_btconchain(
         )));
     }
 
-    // This will act as the transaction memo
     let quote_id = Uuid::new_v4();
+    let reference = Keypair::new().pubkey().to_string();
 
     let quote = BtcOnchainMintQuote {
         quote_id,
-        // address, // shared address for ann usdc deposits
+        reference,
         unit: request.unit,
         amount: request.amount,
         expiry: quote_onchain_expiry(),
@@ -98,7 +103,27 @@ pub async fn get_mint_quote_btconchain(
     //     false => MintBtcOnchainState::Unpaid,
     // };
 
-    Ok(Json(BtcOnchainMintQuote { ..quote }.into()))
+    // ======================================================================
+
+    let client = RpcClient::new("https://api.devnet.solana.com".into());
+    let config = GetConfirmedSignaturesForAddress2Config {
+        limit: Some(20),
+        commitment: Some(CommitmentConfig::confirmed()),
+        ..GetConfirmedSignaturesForAddress2Config::default()
+    };
+
+    let reference = Pubkey::from_str(&quote.reference).expect("reference is not a valid public key");
+    let signatures = client
+        .get_signatures_for_address_with_config(&reference, config).await
+        .expect("onchain backend not configured");
+
+    // TODO: Confirm that the correct amount was paid
+    let state = match signatures.len() {
+        0 => MintBtcOnchainState::Unpaid,
+        _ => MintBtcOnchainState::Paid,
+    };
+
+    Ok(Json(BtcOnchainMintQuote { state, ..quote }.into()))
 }
 
 #[utoipa::path(
@@ -147,7 +172,6 @@ pub async fn post_mint_btconchain(
 
 #[allow(dead_code)]
 fn quote_onchain_expiry() -> u64 {
-    // FIXME add config option for expiry
     let now = Utc::now() + Duration::try_minutes(5).expect("invalid duration");
     now.timestamp() as u64
 }
