@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::blind::{BlindedMessage, BlindedSignature};
+use crate::{blind::{BlindedMessage, BlindedSignature}, proof::Proofs};
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, ToSchema, Hash)]
 #[serde(rename_all = "lowercase")]
@@ -178,4 +178,17 @@ pub struct BtcOnchainMeltQuote {
     pub expiry: u64,
     pub state: MeltBtcOnchainState,
     pub description: Option<String>,
+}
+
+
+#[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
+pub struct PostMeltBtcOnchainRequest {
+    pub quote: String,
+    pub inputs: Proofs,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
+pub struct PostMeltBtcOnchainResponse {
+    pub state: MeltBtcOnchainState,
+    pub txid: Option<String>,
 }
