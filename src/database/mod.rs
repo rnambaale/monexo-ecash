@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use monexo_core::{proof::Proofs, primitives::BtcOnchainMintQuote};
+use monexo_core::{proof::Proofs, primitives::{BtcOnchainMintQuote, BtcOnchainMeltQuote}};
 
 use crate::{error::MonexoMintError, model::Invoice};
 use uuid::Uuid;
@@ -57,5 +57,23 @@ pub trait Database {
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
         quote: &BtcOnchainMintQuote,
+    ) -> Result<(), MonexoMintError>;
+
+    async fn add_onchain_melt_quote(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+        quote: &BtcOnchainMeltQuote,
+    ) -> Result<(), MonexoMintError>;
+
+    async fn get_onchain_melt_quote(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+        key: &Uuid,
+    ) -> Result<BtcOnchainMeltQuote, MonexoMintError>;
+
+    async fn update_onchain_melt_quote(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+        quote: &BtcOnchainMeltQuote,
     ) -> Result<(), MonexoMintError>;
 }

@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use async_trait::async_trait;
 
-use monexo_core::{dhke, primitives::{BtcOnchainMintQuote, CurrencyUnit, MintBtcOnchainState}, proof::{Proof, Proofs}};
+use monexo_core::{dhke, primitives::{BtcOnchainMeltQuote, BtcOnchainMintQuote, CurrencyUnit, MeltBtcOnchainState, MintBtcOnchainState}, proof::{Proof, Proofs}};
 use sqlx::postgres::PgPoolOptions;
 use tracing::instrument;
 use uuid::Uuid;
@@ -186,6 +186,70 @@ impl Database for PostgresDB {
     ) -> Result<(), MonexoMintError> {
         sqlx::query!(
             "UPDATE onchain_mint_quotes SET state = $1 WHERE id = $2",
+            quote.state.to_string(),
+            quote.quote_id
+        )
+        .execute(&mut **tx)
+        .await?;
+        Ok(())
+    }
+
+    #[instrument(level = "debug", skip(self), err)]
+    async fn add_onchain_melt_quote(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+        quote: &BtcOnchainMeltQuote,
+    ) -> Result<(), MonexoMintError> {
+        sqlx::query!(
+            "INSERT INTO onchain_melt_quotes (id, amount, address, fee_total, fee_sat_per_vbyte, expiry, state, description) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+            quote.quote_id,
+            quote.amount as i64,
+            quote.address,
+            quote.fee_total as i64,
+            quote.fee_sat_per_vbyte as i64,
+            quote.expiry as i64,
+            quote.state.to_string(),
+            quote.description
+        )
+        .execute(&mut **tx)
+        .await?;
+        Ok(())
+    }
+
+    #[instrument(level = "debug", skip(self), err)]
+    async fn get_onchain_melt_quote(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+        key: &Uuid,
+    ) -> Result<BtcOnchainMeltQuote, MonexoMintError> {
+        let quote: BtcOnchainMeltQuote = sqlx::query!(
+            "SELECT id, amount,address, fee_total, fee_sat_per_vbyte, expiry, state, description  FROM onchain_melt_quotes WHERE id = $1",
+            key
+        )
+        .map(|row| BtcOnchainMeltQuote {
+            quote_id: row.id,
+            address: row.address,
+            amount: row.amount as u64,
+            fee_total: row.fee_total as u64,
+            fee_sat_per_vbyte: row.fee_sat_per_vbyte as u32,
+            expiry: row.expiry as u64,
+            state: MeltBtcOnchainState::from_str(&row.state).expect("invalid state in melt quote"),
+            description: row.description
+        })
+        .fetch_one(&mut **tx)
+        .await?;
+
+        Ok(quote)
+    }
+
+    #[instrument(level = "debug", skip(self), err)]
+    async fn update_onchain_melt_quote(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+        quote: &BtcOnchainMeltQuote,
+    ) -> Result<(), MonexoMintError> {
+        sqlx::query!(
+            "UPDATE onchain_melt_quotes SET state = $1 WHERE id = $2",
             quote.state.to_string(),
             quote.quote_id
         )
