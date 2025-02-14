@@ -10,7 +10,7 @@ pub struct Opts {
     #[clap(long, env = "MINT_PRIVATE_KEY")]
     pub privatekey: String,
     #[clap(long, env = "MINT_DERIVATION_PATH")]
-    pub derivation_path: String,
+    pub derivation_path: Option<String>,
     #[clap(flatten)]
     pub info: MintInfoConfig,
     // #[clap(flatten)]
@@ -51,7 +51,7 @@ impl Default for DatabaseConfig {
 #[derive(Debug, Clone, Default)]
 pub struct MintConfig {
     pub privatekey: String,
-    pub derivation_path: String,
+    pub derivation_path: Option<String>,
     pub info: MintInfoConfig,
     // pub lightning_fee: LightningFeeConfig,
     pub server: ServerConfig,
@@ -96,7 +96,7 @@ impl MintConfig {
     #[allow(clippy::too_many_arguments)]
     pub const fn new(
         private_key: String,
-        derivation_path: String,
+        derivation_path: Option<String>,
         info: MintInfoConfig,
         // lightning_fee: LightningFeeConfig,
         server: ServerConfig,

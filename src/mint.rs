@@ -33,7 +33,7 @@ where
             // lightning_type,
             keyset: MintKeyset::new(
                 &config.privatekey.clone(),
-                &config.derivation_path.clone(),
+                &config.derivation_path.clone().unwrap_or_default(),
             ),
             db,
             dhke: Dhke::new(),
@@ -114,8 +114,8 @@ impl MintBuilder {
         self
     }
 
-    pub fn with_derivation_path(mut self, derivation_path: String) -> Self {
-        self.derivation_path = Some(derivation_path);
+    pub fn with_derivation_path(mut self, derivation_path: Option<String>) -> Self {
+        self.derivation_path = derivation_path;
         self
     }
 
@@ -138,7 +138,7 @@ impl MintBuilder {
             db,
             MintConfig::new(
                 self.private_key.expect("private-key not set"),
-                self.derivation_path.expect("deriation path not set"),
+                self.derivation_path,
                 self.mint_info_settings.unwrap_or_default(),
                 self.server_config.unwrap_or_default(),
                 db_config,
@@ -146,5 +146,83 @@ impl MintBuilder {
             ),
             BuildParams::from_env(),
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use monexo_core::blind::BlindedMessage;
+    use monexo_core::dhke;
+    use testcontainers_modules::postgres::Postgres;
+    use testcontainers::runners::AsyncRunner;
+    use testcontainers::{ContainerAsync, ImageExt};
+
+    use crate::{
+        config::{DatabaseConfig, MintConfig}, database::postgres::PostgresDB, mint::Mint
+    };
+
+    async fn create_postgres_image() -> anyhow::Result<ContainerAsync<Postgres>> {
+        Ok(Postgres::default()
+            .with_host_auth()
+            .with_tag("16.6-alpine")
+            .start()
+            .await?)
+    }
+
+    async fn create_mock_db_empty(port: u16) -> anyhow::Result<PostgresDB> {
+        let connection_string =
+            &format!("postgres://postgres:postgres@127.0.0.1:{}/postgres", port);
+        let db = PostgresDB::new(&DatabaseConfig {
+            db_url: connection_string.to_owned(),
+            ..Default::default()
+        })
+        .await?;
+        db.migrate().await;
+        Ok(db)
+    }
+
+    async fn create_mint_from_mocks(
+        mock_db: PostgresDB,
+    ) -> anyhow::Result<Mint> {
+
+        Ok(Mint::new(
+            mock_db,
+            MintConfig {
+                privatekey: "TEST_PRIVATE_KEY".to_string(),
+                derivation_path: Some("0/0/0/0".to_string()),
+                ..Default::default()
+            },
+            Default::default(),
+        ))
+    }
+
+    #[tokio::test]
+    async fn test_create_blind_signatures() -> anyhow::Result<()> {
+        let node = create_postgres_image().await?;
+
+        let mint = create_mint_from_mocks(
+            create_mock_db_empty(node.get_host_port_ipv4(5432).await?).await?,
+        )
+        .await?;
+
+        let blinded_messages = vec![BlindedMessage {
+            amount: 8,
+            b_: dhke::public_key_from_hex(
+                "02634a2c2b34bec9e8a4aba4361f6bf202d7fa2365379b0840afe249a7a9d71239",
+            ),
+            id: "00ffd48b8f5ecf80".to_owned(),
+        }];
+
+        let result = mint.create_blinded_signatures(&blinded_messages, &mint.keyset)?;
+
+        assert_eq!(1, result.len());
+        assert_eq!(8, result[0].amount);
+        assert_eq!(
+            dhke::public_key_from_hex(
+                "037074c4f53e326ee14ed67125f387d160e0e729351471b69ad41f7d5d21071e15"
+            ),
+            result[0].c_
+        );
+        Ok(())
     }
 }
