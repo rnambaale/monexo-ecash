@@ -4,3 +4,4 @@ pub mod error;
 mod routes;
 pub mod mint;
 pub mod model;
+pub mod server;
