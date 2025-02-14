@@ -1,4 +1,4 @@
-use monexo_core::{blind::{BlindedMessage, BlindedSignature}, dhke::Dhke, keyset::MintKeyset};
+use monexo_core::{blind::{BlindedMessage, BlindedSignature}, dhke::Dhke, keyset::MintKeyset, primitives::BtcOnchainMeltQuote, proof::Proofs};
 use sqlx::Transaction;
 
 use crate::{config::{BtcOnchainConfig, BuildParams, DatabaseConfig, MintConfig, MintInfoConfig, ServerConfig}, database::{postgres::PostgresDB, Database}, error::MonexoMintError};
@@ -74,6 +74,50 @@ where
         return_error: bool,
     ) -> Result<Vec<BlindedSignature>, MonexoMintError> {
         self.create_blinded_signatures(outputs, keyset)
+    }
+
+    pub async fn check_used_proofs(
+        &self,
+        tx: &mut Transaction<'_, <DB as Database>::DB>,
+        proofs: &Proofs,
+    ) -> Result<(), MonexoMintError> {
+        let used_proofs = self.db.get_used_proofs(tx).await?.proofs();
+        for used_proof in used_proofs {
+            if proofs.proofs().contains(&used_proof) {
+                return Err(MonexoMintError::ProofAlreadyUsed(format!("{used_proof:?}")));
+            }
+        }
+        Ok(())
+    }
+
+    #[instrument(level = "debug", skip(self, proofs), err)]
+    pub async fn melt_onchain(
+        &self,
+        quote: &BtcOnchainMeltQuote,
+        proofs: &Proofs,
+    ) -> Result<String, MonexoMintError> {
+        let proofs_amount = proofs.total_amount();
+
+        if proofs_amount < quote.amount {
+            return Err(MonexoMintError::NotEnoughTokens(quote.amount));
+        }
+
+        let mut tx = self.db.begin_tx().await?;
+        self.check_used_proofs(&mut tx, proofs).await?;
+
+        // TODO: How do we actually send USDC coins on Solana
+        // let send_response = self
+        //     .onchain
+        //     .as_ref()
+        //     .expect("onchain backend not set")
+        //     .send_coins(&quote.address, quote.amount, quote.fee_sat_per_vbyte)
+        //     .await?;
+
+        self.db.add_used_proofs(&mut tx, proofs).await?;
+        tx.commit().await?;
+
+        // Ok(send_response.txid)
+        Ok("some placeholder txid".to_string())
     }
 }
 

@@ -18,6 +18,12 @@ pub enum MonexoMintError {
     #[error("Invalid quote uuid {0}")]
     InvalidUuid(#[from] uuid::Error),
 
+    #[error("Not Enough tokens. Required amount {0}")]
+    NotEnoughTokens(u64),
+
+    #[error("Proof already used {0}")]
+    ProofAlreadyUsed(String),
+
     #[error("PrivateKey in keyset not found")]
     PrivateKeyNotFound,
 

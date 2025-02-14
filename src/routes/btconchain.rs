@@ -5,7 +5,7 @@ use solana_sdk::{signature::Keypair, signer::Signer};
 use solana_sdk::commitment_config::CommitmentConfig;
 
 use axum::{extract::{Path, State}, Json};
-use monexo_core::primitives::{BtcOnchainMeltQuote, BtcOnchainMintQuote, MeltBtcOnchainState, MintBtcOnchainState, PostMeltQuoteBtcOnchainRequest, PostMeltQuoteBtcOnchainResponse, PostMintBtcOnchainRequest, PostMintBtcOnchainResponse, PostMintQuoteBtcOnchainRequest, PostMintQuoteBtcOnchainResponse};
+use monexo_core::primitives::{BtcOnchainMeltQuote, BtcOnchainMintQuote, MeltBtcOnchainState, MintBtcOnchainState, PostMeltBtcOnchainRequest, PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainRequest, PostMeltQuoteBtcOnchainResponse, PostMintBtcOnchainRequest, PostMintBtcOnchainResponse, PostMintQuoteBtcOnchainRequest, PostMintQuoteBtcOnchainResponse};
 use tracing::{info, instrument};
 use uuid::Uuid;
 use chrono::{Duration, Utc};
@@ -274,6 +274,51 @@ pub async fn get_melt_quote_btconchain(
     }
 
     Ok(Json(BtcOnchainMeltQuote { state, ..quote }.into()))
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/melt/btconchain",
+    request_body = PostMeltBtcOnchainRequest,
+    responses(
+        (status = 200, description = "post melt", body = [PostMeltBtcOnchainResponse])
+    ),
+)]
+#[instrument(name = "post_melt_btconchain", skip(mint), err)]
+pub async fn post_melt_btconchain(
+    State(mint): State<Mint>,
+    Json(melt_request): Json<PostMeltBtcOnchainRequest>,
+) -> Result<Json<PostMeltBtcOnchainResponse>, MonexoMintError> {
+    let mut tx = mint.db.begin_tx().await?;
+    let quote = mint
+        .db
+        .get_onchain_melt_quote(&mut tx, &Uuid::from_str(melt_request.quote.as_str())?)
+        .await?;
+
+    let txid = mint.melt_onchain(&quote, &melt_request.inputs).await?;
+    let paid = is_onchain_paid(&mint, &quote).await?;
+
+    // FIXME  compute correct state
+    let state = match paid {
+        true => MeltBtcOnchainState::Paid,
+        false => MeltBtcOnchainState::Unpaid,
+    };
+
+    mint.db
+        .update_onchain_melt_quote(
+            &mut tx,
+            &BtcOnchainMeltQuote {
+                state: state.clone(),
+                ..quote
+            },
+        )
+        .await?;
+    tx.commit().await?;
+
+    Ok(Json(PostMeltBtcOnchainResponse {
+        state,
+        txid: Some(txid),
+    }))
 }
 
 #[allow(dead_code)]

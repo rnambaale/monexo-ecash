@@ -1,7 +1,7 @@
 use crate::mint::Mint;
 use monexo_core::blind::{BlindedMessage, BlindedSignature};
 use monexo_core::keyset::{Keyset, Keysets};
-use monexo_core::primitives::{CurrencyUnit, PostMintQuoteBtcOnchainRequest, PostMintQuoteBtcOnchainResponse};
+use monexo_core::primitives::{CurrencyUnit, PostMeltBtcOnchainRequest, PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainRequest, PostMeltQuoteBtcOnchainResponse, PostMintQuoteBtcOnchainRequest, PostMintQuoteBtcOnchainResponse};
 use monexo_core::proof::{P2SHScript, Proof, Proofs};
 use tracing::info;
 
@@ -14,7 +14,7 @@ use tower_http::cors::{Any, CorsLayer};
 use utoipa_swagger_ui::SwaggerUi;
 use utoipa::OpenApi;
 
-use crate::routes::btconchain::{get_mint_quote_btconchain, post_mint_btconchain, post_mint_quote_btconchain};
+use crate::routes::btconchain::{get_mint_quote_btconchain, post_mint_btconchain, post_mint_quote_btconchain, post_melt_quote_btconchain};
 
 pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
     if let Some(ref buildtime) = mint.build_params.build_time {
@@ -63,9 +63,9 @@ pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
         crate::routes::btconchain::post_mint_quote_btconchain,
         crate::routes::btconchain::get_mint_quote_btconchain,
         crate::routes::btconchain::post_mint_btconchain,
-        // crate::routes::btconchain::post_melt_quote_btconchain,
-        // crate::routes::btconchain::get_melt_quote_btconchain,
-        // crate::routes::btconchain::post_melt_btconchain,
+        crate::routes::btconchain::post_melt_quote_btconchain,
+        crate::routes::btconchain::get_melt_quote_btconchain,
+        crate::routes::btconchain::post_melt_btconchain,
     ),
     components(schemas(
         CurrencyUnit,
@@ -78,6 +78,10 @@ pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
         P2SHScript,
         PostMintQuoteBtcOnchainRequest,
         PostMintQuoteBtcOnchainResponse,
+        PostMeltQuoteBtcOnchainRequest,
+        PostMeltQuoteBtcOnchainResponse,
+        PostMeltBtcOnchainRequest,
+        PostMeltBtcOnchainResponse,
     ))
 )]
 struct ApiDoc;
@@ -109,10 +113,10 @@ fn app(mint: Mint) -> Router {
                 get(get_mint_quote_btconchain),
             )
             .route("/v1/mint/btconchain", post(post_mint_btconchain))
-            // .route(
-            //     "/v1/melt/quote/btconchain",
-            //     post(post_melt_quote_btconchain),
-            // )
+            .route(
+                "/v1/melt/quote/btconchain",
+                post(post_melt_quote_btconchain),
+            )
             // .route(
             //     "/v1/melt/quote/btconchain/:quote",
             //     get(get_melt_quote_btconchain),
