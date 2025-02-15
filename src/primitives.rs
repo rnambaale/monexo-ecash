@@ -192,3 +192,14 @@ pub struct PostMeltBtcOnchainResponse {
     pub state: MeltBtcOnchainState,
     pub txid: Option<String>,
 }
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct PostSwapRequest {
+    pub inputs: Proofs,
+    pub outputs: Vec<BlindedMessage>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Default, ToSchema)]
+pub struct PostSwapResponse {
+    pub signatures: Vec<BlindedSignature>,
+}
