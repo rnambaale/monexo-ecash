@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use monexo_core::{blind::{BlindedMessage, BlindedSignature, TotalAmount}, dhke::Dhke, keyset::MintKeyset, primitives::BtcOnchainMeltQuote, proof::Proofs};
 use sqlx::Transaction;
 
-use crate::{config::{BtcOnchainConfig, BuildParams, DatabaseConfig, MintConfig, MintInfoConfig, ServerConfig}, database::{postgres::PostgresDB, Database}, error::MonexoMintError};
+use crate::{config::{BtcOnchainConfig, BuildParams, DatabaseConfig, MintConfig, MintInfoConfig, ServerConfig, TracingConfig}, database::{postgres::PostgresDB, Database}, error::MonexoMintError};
 use tracing::instrument;
 
 
@@ -165,6 +165,7 @@ pub struct MintBuilder {
     mint_info_settings: Option<MintInfoConfig>,
     server_config: Option<ServerConfig>,
     btc_onchain_config: Option<BtcOnchainConfig>,
+    tracing_config: Option<TracingConfig>,
 }
 
 impl MintBuilder {
@@ -176,6 +177,7 @@ impl MintBuilder {
             mint_info_settings: None,
             server_config: None,
             btc_onchain_config: None,
+            tracing_config: None,
         }
     }
 
@@ -209,6 +211,11 @@ impl MintBuilder {
         self
     }
 
+    pub fn with_tracing(mut self, tracing_config: Option<TracingConfig>) -> Self {
+        self.tracing_config = tracing_config;
+        self
+    }
+
     pub async fn build(self) -> Result<Mint<PostgresDB>, MonexoMintError> {
         let db_config = self.db_config.expect("db-config not set");
         let db = PostgresDB::new(&db_config).await?;
@@ -223,6 +230,7 @@ impl MintBuilder {
                 self.server_config.unwrap_or_default(),
                 db_config,
                 self.btc_onchain_config,
+                self.tracing_config,
             ),
             BuildParams::from_env(),
         ))
