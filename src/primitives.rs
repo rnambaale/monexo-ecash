@@ -19,8 +19,8 @@ pub enum CurrencyUnit {
 
 #[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
 pub struct PostMintQuoteBtcOnchainRequest {
+    #[schema(example = "1500")]
     pub amount: u64,
-    pub unit: CurrencyUnit,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
@@ -73,7 +73,7 @@ impl FromStr for MintBtcOnchainState {
 pub struct BtcOnchainMintQuote {
     pub quote_id: Uuid,
     pub reference: String,
-    pub unit: CurrencyUnit,
+    // pub unit: CurrencyUnit,
     pub amount: u64,
     pub expiry: u64,
     pub state: MintBtcOnchainState,
