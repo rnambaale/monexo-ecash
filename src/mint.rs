@@ -1,4 +1,6 @@
-use monexo_core::{blind::{BlindedMessage, BlindedSignature}, dhke::Dhke, keyset::MintKeyset, primitives::BtcOnchainMeltQuote, proof::Proofs};
+use std::collections::HashSet;
+
+use monexo_core::{blind::{BlindedMessage, BlindedSignature, TotalAmount}, dhke::Dhke, keyset::MintKeyset, primitives::BtcOnchainMeltQuote, proof::Proofs};
 use sqlx::Transaction;
 
 use crate::{config::{BtcOnchainConfig, BuildParams, DatabaseConfig, MintConfig, MintInfoConfig, ServerConfig}, database::{postgres::PostgresDB, Database}, error::MonexoMintError};
@@ -119,6 +121,40 @@ where
         // Ok(send_response.txid)
         Ok("some placeholder txid".to_string())
     }
+
+    fn has_duplicate_pubkeys(outputs: &[BlindedMessage]) -> bool {
+        let mut uniq = HashSet::new();
+        !outputs.iter().all(move |x| uniq.insert(x.b_))
+    }
+
+    #[instrument(level = "debug", skip_all, err)]
+    pub async fn swap(
+        &self,
+        proofs: &Proofs,
+        blinded_messages: &[BlindedMessage],
+        keyset: &MintKeyset,
+    ) -> Result<Vec<BlindedSignature>, MonexoMintError> {
+        let mut tx = self.db.begin_tx().await?;
+        self.check_used_proofs(&mut tx, proofs).await?;
+
+        if Self::has_duplicate_pubkeys(blinded_messages) {
+            return Err(MonexoMintError::SwapHasDuplicatePromises);
+        }
+
+        let sum_proofs = proofs.total_amount();
+
+        let promises = self.create_blinded_signatures(blinded_messages, keyset)?;
+        let amount_promises = promises.total_amount();
+        if sum_proofs != amount_promises {
+            return Err(MonexoMintError::SwapAmountMismatch(format!(
+                "Swap amount mismatch: {sum_proofs} != {amount_promises}"
+            )));
+        }
+
+        self.db.add_used_proofs(&mut tx, proofs).await?;
+        tx.commit().await?;
+        Ok(promises)
+    }
 }
 
 #[derive(Debug, Default)]
@@ -195,8 +231,11 @@ impl MintBuilder {
 
 #[cfg(test)]
 mod tests {
-    use monexo_core::blind::BlindedMessage;
+    use monexo_core::blind::{BlindedMessage, TotalAmount};
     use monexo_core::dhke;
+    use monexo_core::fixture::read_fixture_as;
+    use monexo_core::primitives::PostSwapRequest;
+    use monexo_core::proof::Proofs;
     use testcontainers_modules::postgres::Postgres;
     use testcontainers::runners::AsyncRunner;
     use testcontainers::{ContainerAsync, ImageExt};
@@ -267,6 +306,60 @@ mod tests {
             ),
             result[0].c_
         );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_swap_zero() -> anyhow::Result<()> {
+        let node = create_postgres_image().await?;
+        let blinded_messages = vec![];
+        let mint = create_mint_from_mocks(
+            create_mock_db_empty(node.get_host_port_ipv4(5432).await?).await?,
+        )
+        .await?;
+
+        let proofs = Proofs::empty();
+        let result = mint.swap(&proofs, &blinded_messages, &mint.keyset).await?;
+
+        assert!(result.is_empty());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_swap_64_in_20() -> anyhow::Result<()> {
+        let node = create_postgres_image().await?;
+        let mint = create_mint_from_mocks(
+            create_mock_db_empty(node.get_host_port_ipv4(5432).await?).await?,
+        )
+        .await?;
+        let request = read_fixture_as::<PostSwapRequest>("post_swap_request_64_20.json")?;
+
+        let result = mint
+            .swap(&request.inputs, &request.outputs, &mint.keyset)
+            .await?;
+        assert_eq!(result.total_amount(), 64);
+
+        let prv_last = result.get(result.len() - 2).expect("element not found");
+        let last = result.last().expect("element not found");
+
+        assert_eq!(prv_last.amount, 4);
+        assert_eq!(last.amount, 16);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_swap_duplicate_key() -> anyhow::Result<()> {
+        let node = create_postgres_image().await?;
+        let mint = create_mint_from_mocks(
+            create_mock_db_empty(node.get_host_port_ipv4(5432).await?).await?,
+        )
+        .await?;
+        let request = read_fixture_as::<PostSwapRequest>("post_swap_request_duplicate_key.json")?;
+
+        let result = mint
+            .swap(&request.inputs, &request.outputs, &mint.keyset)
+            .await;
+        assert!(result.is_err());
         Ok(())
     }
 }
