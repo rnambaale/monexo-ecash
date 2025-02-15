@@ -15,7 +15,7 @@ use utoipa_swagger_ui::SwaggerUi;
 use utoipa::OpenApi;
 
 use crate::routes::default::post_swap;
-use crate::routes::btconchain::{get_mint_quote_btconchain, post_mint_btconchain, post_mint_quote_btconchain, post_melt_quote_btconchain};
+use crate::routes::btconchain::{get_mint_quote_btconchain, post_mint_btconchain, post_mint_quote_btconchain, post_melt_quote_btconchain, get_melt_quote_btconchain, post_melt_btconchain};
 
 pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
     if let Some(ref buildtime) = mint.build_params.build_time {
@@ -121,11 +121,11 @@ fn app(mint: Mint) -> Router {
                 "/v1/melt/quote/btconchain",
                 post(post_melt_quote_btconchain),
             )
-            // .route(
-            //     "/v1/melt/quote/btconchain/:quote",
-            //     get(get_melt_quote_btconchain),
-            // )
-            // .route("/v1/melt/btconchain", post(post_melt_btconchain))
+            .route(
+                "/v1/melt/quote/btconchain/:quote",
+                get(get_melt_quote_btconchain),
+            )
+            .route("/v1/melt/btconchain", post(post_melt_btconchain))
     };
 
     let general_routes = Router::new().route("/health", get(get_health));
