@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use async_trait::async_trait;
 
-use monexo_core::{dhke, primitives::{BtcOnchainMeltQuote, BtcOnchainMintQuote, CurrencyUnit, MeltBtcOnchainState, MintBtcOnchainState}, proof::{Proof, Proofs}};
+use monexo_core::{dhke, primitives::{BtcOnchainMeltQuote, BtcOnchainMintQuote, MeltBtcOnchainState, MintBtcOnchainState}, proof::{Proof, Proofs}};
 use sqlx::postgres::PgPoolOptions;
 use tracing::instrument;
 use uuid::Uuid;
@@ -170,7 +170,6 @@ impl Database for PostgresDB {
             expiry: row.expiry as u64,
             state: MintBtcOnchainState::from_str(&row.state).expect("invalid state in mint quote"),
             amount: row.amount as u64,
-            unit: CurrencyUnit::Usd,
         })
         .fetch_one(&mut **tx)
         .await?;

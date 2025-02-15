@@ -47,7 +47,6 @@ pub async fn post_mint_quote_btconchain(
     let quote = BtcOnchainMintQuote {
         quote_id,
         reference,
-        unit: request.unit,
         amount: request.amount,
         expiry: quote_onchain_expiry(),
         state: MintBtcOnchainState::Unpaid,
