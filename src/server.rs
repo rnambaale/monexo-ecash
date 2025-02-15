@@ -14,6 +14,7 @@ use tower_http::cors::{Any, CorsLayer};
 use utoipa_swagger_ui::SwaggerUi;
 use utoipa::OpenApi;
 
+use crate::routes::default::post_swap;
 use crate::routes::btconchain::{get_mint_quote_btconchain, post_mint_btconchain, post_mint_quote_btconchain, post_melt_quote_btconchain};
 
 pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
@@ -101,7 +102,7 @@ fn app(mint: Mint) -> Router {
         // .route("/v1/melt/quote/bolt11", post(post_melt_quote_bolt11))
         // .route("/v1/melt/quote/bolt11/:quote", get(get_melt_quote_bolt11))
         // .route("/v1/melt/bolt11", post(post_melt_bolt11))
-        // .route("/v1/swap", post(post_swap))
+        .route("/v1/swap", post(post_swap))
         // .route("/v1/info", get(get_info))
         ;
 
