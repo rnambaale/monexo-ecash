@@ -3,12 +3,18 @@ use solana_client::{nonblocking::rpc_client::RpcClient, rpc_client::GetConfirmed
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::{signature::Keypair, signer::Signer};
 use solana_sdk::commitment_config::CommitmentConfig;
+use solana_sdk::signature::Signature;
 
 use axum::{extract::{Path, State}, Json};
 use monexo_core::primitives::{BtcOnchainMeltQuote, BtcOnchainMintQuote, MeltBtcOnchainState, MintBtcOnchainState, PostMeltBtcOnchainRequest, PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainRequest, PostMeltQuoteBtcOnchainResponse, PostMintBtcOnchainRequest, PostMintBtcOnchainResponse, PostMintQuoteBtcOnchainRequest, PostMintQuoteBtcOnchainResponse};
+use solana_transaction_status_client_types::option_serializer::OptionSerializer;
 use tracing::{info, instrument};
 use uuid::Uuid;
 use chrono::{Duration, Utc};
+use solana_transaction_status_client_types::{UiTransactionEncoding, UiMessage, UiInstruction, UiParsedInstruction};
+// use solana_transaction_status::{
+//     EncodedConfirmedTransactionWithStatusMeta, UiInstruction, UiMessage, UiParsedMessage,
+// };
 
 use crate::{database::Database, error::MonexoMintError, mint::Mint};
 
@@ -101,24 +107,12 @@ pub async fn get_mint_quote_btconchain(
     //     false => MintBtcOnchainState::Unpaid,
     // };
 
-    // ======================================================================
+    // Extract and parse transaction logs
+    let verified = is_paid(quote.amount, &quote.reference).await;
 
-    let client = RpcClient::new("https://api.devnet.solana.com".into());
-    let config = GetConfirmedSignaturesForAddress2Config {
-        limit: Some(20),
-        commitment: Some(CommitmentConfig::confirmed()),
-        ..GetConfirmedSignaturesForAddress2Config::default()
-    };
-
-    let reference = Pubkey::from_str(&quote.reference).expect("reference is not a valid public key");
-    let signatures = client
-        .get_signatures_for_address_with_config(&reference, config).await
-        .expect("onchain backend not configured");
-
-    // TODO: Confirm that the correct amount was paid
-    let state = match signatures.len() {
-        0 => MintBtcOnchainState::Unpaid,
-        _ => MintBtcOnchainState::Paid,
+    let state = match verified {
+        false => MintBtcOnchainState::Unpaid,
+        true => MintBtcOnchainState::Paid,
     };
 
     Ok(Json(BtcOnchainMintQuote { state, ..quote }.into()))
@@ -357,4 +351,139 @@ async fn is_onchain_paid(
         .expect("onchain backend not configured");
 
     Ok(signatures.len() > 0)
+}
+
+async fn is_paid(amount: u64, expected_reference: &str) -> bool {
+    // Expected values:
+    // let expected_mint = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
+    // let expected_reference = "5t6gQ7Mnr3mmsFYquFGwgEKokq9wrrUgCpwWab93LmLL";
+    // let expected_owner = "HVasUUKPrmrAuBpDFiu8BxQKzrMYY5DvyuNXamvaG2nM";
+    // let expected_amount_str = "10"; // as reported in uiAmountString
+
+    let client = RpcClient::new("https://api.devnet.solana.com".into());
+    let config = GetConfirmedSignaturesForAddress2Config {
+        limit: Some(20),
+        commitment: Some(CommitmentConfig::confirmed()),
+        ..GetConfirmedSignaturesForAddress2Config::default()
+    };
+
+    let reference = Pubkey::from_str(&expected_reference).expect("reference is not a valid public key");
+    let signatures = client
+        .get_signatures_for_address_with_config(&reference, config).await
+        .expect("onchain backend not configured");
+
+    let first_signature = match signatures.first() {
+        Some(sig) =>
+            Signature::from_str(&sig.signature).expect("could not parse transaction signature"),
+        None => {
+            eprintln!("No transaction signatures found");
+            return false;
+        }
+    };
+
+    let tx = client.
+        get_transaction(&first_signature, UiTransactionEncoding::JsonParsed).await
+        .expect("could not fetch transaction details");
+
+    let expected_mint = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
+    let expected_owner  = "HVasUUKPrmrAuBpDFiu8BxQKzrMYY5DvyuNXamvaG2nM";
+
+    let amount_string_representation = amount.to_string();
+    let expected_amount_str = amount_string_representation.as_str();
+
+    // === 1. Verify the post-transaction token balances ===
+    let meta = match &tx.transaction.meta {
+        Some(m) => m,
+        None => {
+            eprintln!("No meta data in transaction");
+            return false;
+        }
+    };
+
+    let post_token_balances = match &meta.post_token_balances {
+        OptionSerializer::Some(balances) => balances,
+        _ => {
+            eprintln!("No post token balances found in transaction meta");
+            return false;
+        }
+    };
+
+    // Check that one of the post-token balances shows the expected mint,
+    // destination (owner) and amount.
+    let balance_ok = post_token_balances.iter().any(|balance| {
+        balance.mint == expected_mint.to_string()
+            && balance.owner == OptionSerializer::Some(expected_owner.to_string())
+            && balance.ui_token_amount.ui_amount_string == expected_amount_str
+    });
+    if !balance_ok {
+        eprintln!("Post token balance verification failed.");
+        return false;
+    }
+
+    // === 2. Verify the transfer instruction details ===
+    // We expect the transaction message to be parsed.
+    let ui_tx = match &tx.transaction.transaction {
+        // If the transaction is encoded as JSON, extract the parsed message.
+        solana_transaction_status::EncodedTransaction::Json(ui_tx) => ui_tx,
+        _ => {
+            eprintln!("Transaction is not JSON parsed");
+            return false;
+        }
+    };
+
+    let parsed_msg = match &ui_tx.message {
+        UiMessage::Parsed(msg) => msg,
+        _ => {
+            eprintln!("Transaction message is not parsed");
+            return false;
+        }
+    };
+
+    // Iterate over the instructions to find our transfer
+    let mut transfer_verified = false;
+    for inst in &parsed_msg.instructions {
+        // We expect the instructions to be of the parsed variant.
+        if let UiInstruction::Parsed(parsed_inst_1) = inst {
+            // We're looking for a transferChecked instruction from the spl-token program.
+            if let UiParsedInstruction::Parsed(parsed_inst) = parsed_inst_1 {
+                if parsed_inst.program == "spl-token"
+                    && parsed_inst.parsed.get("type").and_then(|t| t.as_str()) == Some("transferChecked")
+                {
+                    if let Some(info) = parsed_inst.parsed.get("info").and_then(|v| v.as_object()) {
+                        // Check that the mint is correct.
+                        let mint = info.get("mint").and_then(|v| v.as_str()).unwrap_or("");
+                        if mint != expected_mint {
+                            continue;
+                        }
+
+                        // Check for the reference in the signers array.
+                        if let Some(signers) = info.get("signers").and_then(|v| v.as_array()) {
+                            let reference_found = signers.iter().any(|s| s.as_str() == Some(expected_reference));
+                            if !reference_found {
+                                continue;
+                            }
+                        } else {
+                            continue;
+                        }
+
+                        // Check that the transferred amount is 10 USDC.
+                        if let Some(token_amount) = info.get("tokenAmount") {
+                            if token_amount.get("uiAmountString").and_then(|s| s.as_str()) == Some(expected_amount_str) {
+                                transfer_verified = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if !transfer_verified {
+        eprintln!("Transfer instruction verification failed.");
+        return false;
+    }
+
+    println!("Transaction verification passed.");
+    true
 }

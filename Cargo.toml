@@ -30,6 +30,8 @@ tower-http = { workspace = true, features = ["cors", "fs", "set-header"] }
 thiserror = { workspace = true }
 solana-sdk = { workspace = true }
 solana-client = { workspace = true }
+solana-transaction-status-client-types = { workspace = true }
+solana-transaction-status = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 
