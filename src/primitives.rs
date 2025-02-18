@@ -1,8 +1,9 @@
 //! This module contains all the request and response objects that are used for interacting between the Mint and Wallet in Cashu.
 //! All of these structs are serializable and deserializable using serde.
 
-use std::{fmt::Display, str::FromStr};
+use std::{collections::HashMap, fmt::Display, str::FromStr};
 
+use secp256k1::PublicKey;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -202,4 +203,25 @@ pub struct PostSwapRequest {
 #[derive(Clone, Debug, Serialize, Deserialize, Default, ToSchema)]
 pub struct PostSwapResponse {
     pub signatures: Vec<BlindedSignature>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Default, ToSchema)]
+pub struct KeysResponse {
+    pub keysets: Vec<KeyResponse>,
+}
+
+impl KeysResponse {
+    pub fn new(keyset: KeyResponse) -> Self {
+        Self {
+            keysets: vec![keyset],
+        }
+    }
+}
+
+#[derive(serde::Deserialize, Serialize, Clone, Debug, PartialEq, Eq, ToSchema)]
+pub struct KeyResponse {
+    pub id: String, // TODO use new type for keyset_id
+    pub unit: CurrencyUnit,
+    #[schema(value_type = HashMap<u64, String>)]
+    pub keys: HashMap<u64, PublicKey>,
 }
