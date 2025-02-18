@@ -1,0 +1,24 @@
+[package]
+name = "monexo-cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "monexo-cli"
+path = "src/bin/monexo-cli.rs"
+
+[lib]
+name = "monexocli"
+path = "src/lib.rs"
+
+[dependencies]
+monexo-wallet = { version = "0.1.0", path = "../monexo-wallet" }
+monexo-core = { version = "0.2.1", path = "../monexo-core" }
+anyhow = { workspace = true, features = ["backtrace"] }
+clap = { workspace = true, features = ["derive"] }
+console = { workspace = true }
+num-format = { workspace = true }
+url = { workspace = true }
+qrcode = { workspace = true }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros"] }
+indicatif = { workspace = true }
