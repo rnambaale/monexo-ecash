@@ -75,9 +75,15 @@ async fn main() -> anyhow::Result<()> {
             e
         })?;
 
+    let mint_url = Url::parse("http://127.0.0.1:3338/").unwrap();
+
+    let wallet_keysets = wallet.get_wallet_keysets().await;
+    if wallet_keysets.unwrap().len() == 0 {
+        wallet.add_mint_keysets(&mint_url).await?;
+    }
+
     match cli.command {
         Command::Mint { amount } => {
-            let mint_url = Url::parse("http://127.0.0.1:3338/").unwrap();
             let mint_info = wallet.get_mint_info(&mint_url).await?;
 
             let quote = {
@@ -119,7 +125,7 @@ async fn main() -> anyhow::Result<()> {
 
             let wallet_keysets = wallet.get_wallet_keysets().await?;
             let wallet_keyset = wallet_keysets
-                .get_active(&mint_url)
+                .get_active()
                 .expect("Keyset not found");
 
             let progress_bar = cli::progress_bar()?;
@@ -140,7 +146,7 @@ async fn main() -> anyhow::Result<()> {
 
                 // FIXME store quote in db and add option to retry minting later
                 let mint_result = wallet
-                    .mint_tokens(wallet_keyset, amount.into(), quote.clone())
+                    .mint_tokens(&mint_url, wallet_keyset, amount.into(), quote.clone())
                     .await;
 
                 match mint_result {
