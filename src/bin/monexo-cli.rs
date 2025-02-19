@@ -48,7 +48,7 @@ async fn main() -> anyhow::Result<()> {
     let db_path = match cli.db_dir {
         Some(dir) => {
             std::fs::create_dir_all(dir.clone())?;
-            dir.join("wallet.db").to_str().unwrap().to_string()
+            dir.join("wallet2.db").to_str().unwrap().to_string()
         }
 
         None => monexo_wallet::config_path::db_path(),
