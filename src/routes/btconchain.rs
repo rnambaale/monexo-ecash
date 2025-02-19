@@ -7,6 +7,7 @@ use solana_sdk::signature::Signature;
 
 use axum::{extract::{Path, State}, Json};
 use monexo_core::primitives::{BtcOnchainMeltQuote, BtcOnchainMintQuote, MeltBtcOnchainState, MintBtcOnchainState, PostMeltBtcOnchainRequest, PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainRequest, PostMeltQuoteBtcOnchainResponse, PostMintBtcOnchainRequest, PostMintBtcOnchainResponse, PostMintQuoteBtcOnchainRequest, PostMintQuoteBtcOnchainResponse};
+use solana_transaction_status::UiTransactionTokenBalance;
 use solana_transaction_status_client_types::option_serializer::OptionSerializer;
 use tracing::{info, instrument};
 use uuid::Uuid;
@@ -381,9 +382,18 @@ async fn is_paid(amount: u64, expected_reference: &str) -> bool {
         }
     };
 
-    let tx = client.
-        get_transaction(&first_signature, UiTransactionEncoding::JsonParsed).await
-        .expect("could not fetch transaction details");
+    let tx
+        = match client.get_transaction(
+            &first_signature,
+            UiTransactionEncoding::JsonParsed
+        ).await
+    {
+        Ok(tx) => tx,
+        _ => {
+            eprintln!("could not fetch transaction details");
+            return false;
+        }
+    };
 
     let expected_mint = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
     let expected_owner  = "HVasUUKPrmrAuBpDFiu8BxQKzrMYY5DvyuNXamvaG2nM";
@@ -400,25 +410,39 @@ async fn is_paid(amount: u64, expected_reference: &str) -> bool {
         }
     };
 
-    let post_token_balances = match &meta.post_token_balances {
-        OptionSerializer::Some(balances) => balances,
-        _ => {
-            eprintln!("No post token balances found in transaction meta");
-            return false;
-        }
-    };
+    let pre_ata_token_balance = get_mint_token_balance(
+        &meta.pre_token_balances,
+        &expected_mint,
+        expected_owner
+    );
 
-    // Check that one of the post-token balances shows the expected mint,
-    // destination (owner) and amount.
-    let balance_ok = post_token_balances.iter().any(|balance| {
-        balance.mint == expected_mint.to_string()
-            && balance.owner == OptionSerializer::Some(expected_owner.to_string())
-            && balance.ui_token_amount.ui_amount_string == expected_amount_str
-    });
-    if !balance_ok {
+    let post_ata_token_balance = get_mint_token_balance(
+        &meta.post_token_balances,
+        expected_mint,
+        expected_owner
+    );
+
+    let mint_balance_change = post_ata_token_balance - pre_ata_token_balance;
+
+    if mint_balance_change < amount as f64 {
         eprintln!("Post token balance verification failed.");
         return false;
     }
+
+    // // Check that one of the post-token balances shows the expected mint,
+    // // destination (owner) and amount.
+    // let balance_ok = post_token_balances.iter().any(|balance| {
+    //     // info!("balance.mint == expected_mint.to_string(): {}", balance.mint == expected_mint.to_string());
+    //     // info!("balance.owner == OptionSerializer::Some(expected_owner.to_string()): {}", balance.owner == OptionSerializer::Some(expected_owner.to_string()));
+    //     // info!("balance.ui_token_amount.ui_amount_string == expected_amount_str: {}", balance.ui_token_amount.ui_amount_string == expected_amount_str);
+    //     return balance.mint == expected_mint.to_string()
+    //         && balance.owner == OptionSerializer::Some(expected_owner.to_string())
+    //         && balance.ui_token_amount.ui_amount_string == expected_amount_str
+    // });
+    // if !balance_ok {
+    //     eprintln!("Post token balance verification failed.");
+    //     return false;
+    // }
 
     // === 2. Verify the transfer instruction details ===
     // We expect the transaction message to be parsed.
@@ -486,4 +510,38 @@ async fn is_paid(amount: u64, expected_reference: &str) -> bool {
 
     println!("Transaction verification passed.");
     true
+}
+
+
+///
+/// Gets a Vec<UiTransactionTokenBalance> and determins the balance on of mint tokens
+/// on the given asscoiated token account address
+///
+fn get_mint_token_balance(
+    token_balances: &OptionSerializer<Vec<UiTransactionTokenBalance>>,
+    token_address: &str,
+    mint_ata_address: &str) -> f64 {
+    let token_balances = match token_balances {
+        OptionSerializer::Some(balances) => balances,
+        _ => {
+            eprintln!("No pre token balances found in transaction meta");
+            return 0.0;
+        }
+    };
+
+    let ata_token_balance = match token_balances.iter().find(|token_balance|
+        token_balance.mint == token_address.to_string()
+        && token_balance.owner == OptionSerializer::Some(mint_ata_address.to_string())
+    ) {
+        Some(token_balance) => token_balance.ui_token_amount.ui_amount,
+        _ => {
+            return 0.0;
+        }
+    };
+
+    if ata_token_balance.is_none() {
+        return 0.0;
+    }
+
+    ata_token_balance.unwrap()
 }
