@@ -185,6 +185,12 @@ async fn main() -> anyhow::Result<()> {
             }
             cli::show_total_balance(&wallet).await?;
         }
+        Command::Info => {
+            let wallet_version = style(env!("CARGO_PKG_VERSION")).cyan();
+            let db_path = style(db_path).cyan();
+            term.write_line(&format!("Version: {wallet_version}"))?;
+            term.write_line(&format!("DB: {db_path}"))?;
+        }
         _ => {}
     }
     Ok(())
