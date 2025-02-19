@@ -88,24 +88,25 @@ async fn main() -> anyhow::Result<()> {
             let mint_info = wallet.get_mint_info(&mint_url).await?;
 
             let quote = {
-                // let nut17 = info.nuts.nut18.expect("nut17 is None");
-                // let payment_method = nut17.payment_methods.first().expect("no payment methods");
+                // TODO: Fetch this from backend
+                let min_amount: u64 = 10;
+                if amount < min_amount {
+                    term.write_line(&format!(
+                        "Amount too low. Minimum amount is {} (usd)",
+                        min_amount.to_formatted_string(&Locale::en)
+                    ))?;
+                    return Ok(());
+                }
 
-                // if amount < payment_method.min_amount {
-                //     term.write_line(&format!(
-                //         "Amount too low. Minimum amount is {} (sat)",
-                //         payment_method.min_amount.to_formatted_string(&Locale::en)
-                //     ))?;
-                //     return Ok(());
-                // }
-
-                // if amount > payment_method.max_amount {
-                //     term.write_line(&format!(
-                //         "Amount too high. Maximum amount is {} (sat)",
-                //         payment_method.max_amount.to_formatted_string(&Locale::en)
-                //     ))?;
-                //     return Ok(());
-                // }
+                // TODO: Fetch this from backend
+                let max_amount: u64 = 1_000_000;
+                if amount > max_amount {
+                    term.write_line(&format!(
+                        "Amount too high. Maximum amount is {} (usd)",
+                        max_amount.to_formatted_string(&Locale::en)
+                    ))?;
+                    return Ok(());
+                }
 
                 let PostMintQuoteBtcOnchainResponse { reference, quote, .. } =
                     wallet.create_quote_onchain(&mint_url, amount).await?;
@@ -115,7 +116,7 @@ async fn main() -> anyhow::Result<()> {
                 let amount = amount as f64 ;
                 let address_string = mint_info.usdc_address;
                 let token_mint = mint_info.usdc_token_mint;
-                let bip21_code = format!("solana:{}?amount={}&spl-token={}&reference={}&label=Store&message=Thank%20you!", address_string, amount, token_mint, reference);
+                let bip21_code = format!("solana:{}?amount={}&spl-token={}&reference={}&label=Monexo&message=Thank%20you!", address_string, amount, token_mint, reference);
                 let image = QrCode::new(bip21_code)?
                     .render::<unicode::Dense1x2>()
                     .quiet_zone(true)
