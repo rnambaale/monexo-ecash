@@ -12,7 +12,7 @@ pub const ENV_DB_PATH: &str = "WALLET_DB_PATH";
 /// # Examples
 ///
 /// ```
-/// let db_path = moksha_wallet::config_path::db_path();
+/// let db_path = monexo_wallet::config_path::db_path();
 /// println!("Database path: {}", db_path);
 /// ```
 pub fn db_path() -> String {
