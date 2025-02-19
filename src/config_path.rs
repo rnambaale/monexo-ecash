@@ -6,8 +6,8 @@ pub const ENV_DB_PATH: &str = "WALLET_DB_PATH";
 /// Returns the path to the wallet database file.
 ///
 /// The path is determined by the value of the `WALLET_DB_PATH` environment variable. If the
-/// variable is not set, the function creates a `.moksha` directory in the user's home directory
-/// and returns a path to a `wallet.db` file in that directory.
+/// variable is not set, the function creates a `.monexo` directory in the user's home directory
+/// and returns a path to a `wallet2.db` file in that directory.
 ///
 /// # Examples
 ///
@@ -29,13 +29,13 @@ pub fn db_path() -> String {
             .take(3)
             .collect::<Vec<&str>>()
             .join(std::path::MAIN_SEPARATOR_STR);
-        let moksha_dir = format!("{}{}.moksha", home, std::path::MAIN_SEPARATOR);
+        let monexo_dir = format!("{}{}.monexo", home, std::path::MAIN_SEPARATOR);
 
-        if !std::path::Path::new(&moksha_dir).exists() {
-            create_dir(std::path::Path::new(&moksha_dir)).expect("failed to create .moksha dir");
+        if !std::path::Path::new(&monexo_dir).exists() {
+            create_dir(std::path::Path::new(&monexo_dir)).expect("failed to create .monexo dir");
         }
 
-        format!("{moksha_dir}/wallet.db")
+        format!("{monexo_dir}/wallet2.db")
     })
 }
 
