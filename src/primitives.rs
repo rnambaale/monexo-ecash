@@ -5,6 +5,7 @@ use std::{collections::HashMap, fmt::Display, str::FromStr};
 
 use secp256k1::PublicKey;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -224,4 +225,71 @@ pub struct KeyResponse {
     pub unit: CurrencyUnit,
     #[schema(value_type = HashMap<u64, String>)]
     pub keys: HashMap<u64, PublicKey>,
+}
+
+#[skip_serializing_none]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, ToSchema)]
+pub struct MintInfoResponse {
+    pub name: Option<String>,
+    // #[schema(value_type = String)]
+    // pub pubkey: PublicKey,
+    pub version: Option<String>,
+    // pub description: Option<String>,
+    // pub description_long: Option<String>,
+    // pub contact: Option<Vec<ContactInfoResponse>>,
+    // pub motd: Option<String>,
+    pub usdc_address: String,
+    pub usdc_token_mint: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+
+    use crate::primitives::{KeyResponse, MintInfoResponse, PostSwapResponse};
+
+    #[test]
+    fn test_serialize_empty_swap_response() -> anyhow::Result<()> {
+        let response = PostSwapResponse::default();
+        let serialized = serde_json::to_string(&response)?;
+        assert_eq!(serialized, "{\"signatures\":[]}");
+        Ok(())
+    }
+
+    #[test]
+    fn test_serialize_keyresponse() -> anyhow::Result<()> {
+        let response = KeyResponse {
+            id: "test".to_string(),
+            unit: crate::primitives::CurrencyUnit::Sat,
+            keys: std::collections::HashMap::new(),
+        };
+        let serialized = serde_json::to_string(&response)?;
+        assert_eq!(serialized, "{\"id\":\"test\",\"unit\":\"sat\",\"keys\":{}}");
+        Ok(())
+    }
+
+    #[test]
+    fn test_serialize_mint_info() -> anyhow::Result<()> {
+        let mint_info = MintInfoResponse {
+            name: Some("Bob's Cashu mint".to_string()),
+            version: Some("Nutshell/0.11.0".to_string()),
+            usdc_address: String::from("02a9acc1e48c25eeeb9289b5031cc57da9fe72f3fe2861d264bdc074209b107ba2"),
+            usdc_token_mint: String::from("02a9acc1e48c25eeeb9289b5031cc57da9fe72f3fe2861d264bdc074209b107ba1"),
+        };
+        let out = serde_json::to_string_pretty(&mint_info)?;
+        assert!(!out.is_empty());
+        assert!(out.contains("02a9acc1e48c25eeeb9289b5031cc57da9fe72f3fe2861d264bdc074209b107ba2"));
+        assert!(out.contains("02a9acc1e48c25eeeb9289b5031cc57da9fe72f3fe2861d264bdc074209b107ba1"));
+        Ok(())
+    }
+
+    // #[test]
+    // fn test_deserialize_nustash_mint_info() -> anyhow::Result<()> {
+    //     let mint_info = read_fixture("nutshell_mint_info.json")?;
+    //     let info = serde_json::from_str::<MintInfoResponse>(&mint_info);
+    //     assert!(info.is_ok());
+    //     let info = info?;
+    //     assert_eq!("Nutshell/0.15.0", info.version.unwrap());
+    //     Ok(())
+    // }
 }
