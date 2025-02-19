@@ -249,22 +249,23 @@ where
         Ok(result)
     }
 
-    // pub async fn receive_tokens(
-    //     &self,
-    //     wallet_keyset: &WalletKeyset,
-    //     tokens: &TokenV3,
-    // ) -> Result<(), MonexoWalletError> {
-    //     let total_amount = tokens.total_amount();
-    //     let (_, redeemed_tokens) = self
-    //         .swap_tokens(wallet_keyset, tokens, total_amount.into())
-    //         .await?;
-    //     let mut tx = self.localstore.begin_tx().await?;
-    //     self.localstore
-    //         .add_proofs(&mut tx, &redeemed_tokens.proofs())
-    //         .await?;
-    //     tx.commit().await?;
-    //     Ok(())
-    // }
+    pub async fn receive_tokens(
+        &self,
+        mint_url: &Url,
+        wallet_keyset: &WalletKeyset,
+        tokens: &TokenV3,
+    ) -> Result<(), MonexoWalletError> {
+        let total_amount = tokens.total_amount();
+        let (_, redeemed_tokens) = self
+            .swap_tokens(mint_url, wallet_keyset, tokens, total_amount.into())
+            .await?;
+        let mut tx = self.localstore.begin_tx().await?;
+        self.localstore
+            .add_proofs(&mut tx, &redeemed_tokens.proofs())
+            .await?;
+        tx.commit().await?;
+        Ok(())
+    }
 
     // pub async fn get_mint_quote(
     //     &self,
