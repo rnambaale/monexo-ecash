@@ -70,4 +70,6 @@ pub trait CashuClient {
     ) -> Result<PostMeltQuoteBtcOnchainResponse, MonexoWalletError>;
 
     async fn get_info(&self, mint_url: &Url) -> Result<MintInfoResponse, MonexoWalletError>;
+
+    async fn is_v1_supported(&self, mint_url: &Url) -> Result<bool, MonexoWalletError>;
 }

@@ -107,4 +107,10 @@ impl CashuClient for CrossPlatformHttpClient {
     async fn get_info(&self, mint_url: &Url) -> Result<MintInfoResponse, MonexoWalletError> {
         self.do_get(&mint_url.join("v1/info")?).await
     }
+
+    async fn is_v1_supported(&self, mint_url: &Url) -> Result<bool, MonexoWalletError> {
+        self.get_status(&mint_url.join("v1/info")?)
+            .await
+            .map(|s| s == 200)
+    }
 }

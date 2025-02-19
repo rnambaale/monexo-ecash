@@ -71,4 +71,10 @@ pub enum MonexoWalletError {
 
     #[error("{1}")]
     InvoiceNotPaidYet(u64, String),
+
+    #[error("Not enough tokens")]
+    NotEnoughTokens,
+
+    #[error("Invalid Proofs")]
+    InvalidProofs,
 }

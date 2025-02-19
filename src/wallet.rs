@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use monexo_core::{amount::Amount, blind::{BlindedMessage, BlindedSignature, BlindingFactor}, dhke::Dhke, keyset::KeysetId, primitives::{MintBtcOnchainState, MintInfoResponse, PostMintQuoteBtcOnchainResponse}, proof::{Proof, Proofs}, token::TokenV3};
+use monexo_core::{amount::Amount, blind::{BlindedMessage, BlindedSignature, BlindingFactor, TotalAmount}, dhke::Dhke, keyset::KeysetId, primitives::{CurrencyUnit, MintBtcOnchainState, MintInfoResponse, PostMintQuoteBtcOnchainResponse}, proof::{Proof, Proofs}, token::TokenV3};
 use secp256k1::PublicKey;
 use url::Url;
 
@@ -211,42 +211,43 @@ where
         Ok(total_amount)
     }
 
-    // pub async fn send_tokens(
-    //     &self,
-    //     wallet_keyset: &WalletKeyset,
-    //     amount: u64,
-    // ) -> Result<TokenV3, MonexoWalletError> {
-    //     let balance = self.get_balance().await?;
-    //     if amount > balance {
-    //         return Err(MonexoWalletError::NotEnoughTokens);
-    //     }
+    pub async fn send_tokens(
+        &self,
+        mint_url: &Url,
+        wallet_keyset: &WalletKeyset,
+        amount: u64,
+    ) -> Result<TokenV3, MonexoWalletError> {
+        let balance = self.get_balance().await?;
+        if amount > balance {
+            return Err(MonexoWalletError::NotEnoughTokens);
+        }
 
-    //     let mut tx = self.localstore.begin_tx().await?;
-    //     let all_proofs = self
-    //         .localstore
-    //         .get_proofs(&mut tx)
-    //         .await?
-    //         .proofs_by_keyset(&wallet_keyset.keyset_id);
-    //     tx.commit().await?;
+        let mut tx = self.localstore.begin_tx().await?;
+        let all_proofs = self
+            .localstore
+            .get_proofs(&mut tx)
+            .await?
+            .proofs_by_keyset(&wallet_keyset.keyset_id);
+        tx.commit().await?;
 
-    //     let selected_proofs = all_proofs.proofs_for_amount(amount)?;
-    //     let selected_tokens = (wallet_keyset.mint_url.to_owned(), selected_proofs.clone()).into();
+        let selected_proofs = all_proofs.proofs_for_amount(amount)?;
+        let selected_tokens = (mint_url.to_owned(), selected_proofs.clone()).into();
 
-    //     let (remaining_tokens, result) = self
-    //         .swap_tokens(wallet_keyset, &selected_tokens, amount.into())
-    //         .await?;
+        let (remaining_tokens, result) = self
+            .swap_tokens(mint_url, wallet_keyset, &selected_tokens, amount.into())
+            .await?;
 
-    //     let mut tx = self.localstore.begin_tx().await?;
-    //     self.localstore
-    //         .delete_proofs(&mut tx, &selected_proofs)
-    //         .await?;
+        let mut tx = self.localstore.begin_tx().await?;
+        self.localstore
+            .delete_proofs(&mut tx, &selected_proofs)
+            .await?;
 
-    //     self.localstore
-    //         .add_proofs(&mut tx, &remaining_tokens.proofs())
-    //         .await?;
-    //     tx.commit().await?;
-    //     Ok(result)
-    // }
+        self.localstore
+            .add_proofs(&mut tx, &remaining_tokens.proofs())
+            .await?;
+        tx.commit().await?;
+        Ok(result)
+    }
 
     // pub async fn receive_tokens(
     //     &self,
@@ -366,92 +367,93 @@ where
         Ok(secret_range)
     }
 
-    // pub async fn swap_tokens(
-    //     &self,
-    //     wallet_keyset: &WalletKeyset,
-    //     tokens: &TokenV3,
-    //     splt_amount: Amount,
-    // ) -> Result<(TokenV3, TokenV3), MokshaWalletError> {
-    //     let total_token_amount = tokens.total_amount();
-    //     let first_amount: Amount = (total_token_amount - splt_amount.0).into();
-    //     let first_secrets = self
-    //         .create_secrets(&wallet_keyset.keyset_id, first_amount.split().len() as u32)
-    //         .await?;
-    //     let first_outputs = self.create_blinded_messages(
-    //         &wallet_keyset.keyset_id,
-    //         first_amount,
-    //         first_secrets.clone(),
-    //     )?;
+    pub async fn swap_tokens(
+        &self,
+        mint_url: &Url,
+        wallet_keyset: &WalletKeyset,
+        tokens: &TokenV3,
+        splt_amount: Amount,
+    ) -> Result<(TokenV3, TokenV3), MonexoWalletError> {
+        let total_token_amount = tokens.total_amount();
+        let first_amount: Amount = (total_token_amount - splt_amount.0).into();
+        let first_secrets = self
+            .create_secrets(&wallet_keyset.keyset_id, first_amount.split().len() as u32)
+            .await?;
+        let first_outputs = self.create_blinded_messages(
+            &wallet_keyset.keyset_id,
+            first_amount,
+            first_secrets.clone(),
+        )?;
 
-    //     // ############################################################################
+        // ############################################################################
 
-    //     let second_amount = splt_amount.clone();
-    //     let second_secrets = self
-    //         .create_secrets(&wallet_keyset.keyset_id, second_amount.split().len() as u32)
-    //         .await?;
-    //     let second_outputs = self.create_blinded_messages(
-    //         &wallet_keyset.keyset_id,
-    //         second_amount,
-    //         second_secrets.clone(),
-    //     )?;
+        let second_amount = splt_amount.clone();
+        let second_secrets = self
+            .create_secrets(&wallet_keyset.keyset_id, second_amount.split().len() as u32)
+            .await?;
+        let second_outputs = self.create_blinded_messages(
+            &wallet_keyset.keyset_id,
+            second_amount,
+            second_secrets.clone(),
+        )?;
 
-    //     let mut total_outputs = vec![];
-    //     total_outputs.extend(get_blinded_msg(first_outputs.clone()));
-    //     total_outputs.extend(get_blinded_msg(second_outputs.clone()));
+        let mut total_outputs = vec![];
+        total_outputs.extend(get_blinded_msg(first_outputs.clone()));
+        total_outputs.extend(get_blinded_msg(second_outputs.clone()));
 
-    //     if tokens.total_amount() != total_outputs.total_amount() {
-    //         return Err(MokshaWalletError::InvalidProofs);
-    //     }
+        if tokens.total_amount() != total_outputs.total_amount() {
+            return Err(MonexoWalletError::InvalidProofs);
+        }
 
-    //     let split_result = self
-    //         .client
-    //         .post_swap(&wallet_keyset.mint_url, tokens.proofs(), total_outputs)
-    //         .await?;
+        let split_result = self
+            .client
+            .post_swap(&mint_url, tokens.proofs(), total_outputs)
+            .await?;
 
-    //     if split_result.signatures.is_empty() {
-    //         return Ok((TokenV3::empty(), TokenV3::empty()));
-    //     }
+        if split_result.signatures.is_empty() {
+            return Ok((TokenV3::empty(), TokenV3::empty()));
+        }
 
-    //     let len_first = first_secrets.len();
-    //     let secrets = [first_secrets, second_secrets].concat();
-    //     let outputs = [first_outputs, second_outputs].concat();
+        let len_first = first_secrets.len();
+        let secrets = [first_secrets, second_secrets].concat();
+        let outputs = [first_outputs, second_outputs].concat();
 
-    //     let secrets = secrets.into_iter().map(|(s, _)| s).collect::<Vec<String>>();
+        let secrets = secrets.into_iter().map(|(s, _)| s).collect::<Vec<String>>();
 
-    //     let proofs = self
-    //         .create_proofs_from_blinded_signatures(
-    //             &wallet_keyset.keyset_id,
-    //             &wallet_keyset.public_keys,
-    //             split_result.signatures,
-    //             secrets,
-    //             outputs,
-    //         )?
-    //         .proofs();
+        let proofs = self
+            .create_proofs_from_blinded_signatures(
+                &wallet_keyset.keyset_id,
+                &wallet_keyset.public_keys,
+                split_result.signatures,
+                secrets,
+                outputs,
+            )?
+            .proofs();
 
-    //     let first_tokens: TokenV3 = (
-    //         wallet_keyset.mint_url.to_owned(),
-    //         wallet_keyset.currency_unit.clone(),
-    //         proofs[0..len_first].to_vec().into(),
-    //     )
-    //         .into();
-    //     let second_tokens: TokenV3 = (
-    //         wallet_keyset.mint_url.to_owned(),
-    //         wallet_keyset.currency_unit.clone(),
-    //         proofs[len_first..proofs.len()].to_vec().into(),
-    //     )
-    //         .into();
+        let first_tokens: TokenV3 = (
+            mint_url.to_owned(),
+            CurrencyUnit::Usd,
+            proofs[0..len_first].to_vec().into(),
+        )
+            .into();
+        let second_tokens: TokenV3 = (
+            mint_url.to_owned(),
+            CurrencyUnit::Usd,
+            proofs[len_first..proofs.len()].to_vec().into(),
+        )
+            .into();
 
-    //     if tokens.total_amount() != first_tokens.total_amount() + second_tokens.total_amount() {
-    //         println!(
-    //             "Error in swap: input {:?} != output {:?} + {:?}",
-    //             tokens.total_amount(),
-    //             first_tokens.total_amount(),
-    //             second_tokens.total_amount()
-    //         );
-    //     }
+        if tokens.total_amount() != first_tokens.total_amount() + second_tokens.total_amount() {
+            println!(
+                "Error in swap: input {:?} != output {:?} + {:?}",
+                tokens.total_amount(),
+                first_tokens.total_amount(),
+                second_tokens.total_amount()
+            );
+        }
 
-    //     Ok((first_tokens, second_tokens))
-    // }
+        Ok((first_tokens, second_tokens))
+    }
 
     pub async fn get_mint_info(
         &self,
@@ -667,7 +669,231 @@ where
     }
 }
 
+// FIXME implement for Vec<BlindedMessage, Secretkey>
+fn get_blinded_msg(blinded_messages: Vec<(BlindedMessage, BlindingFactor)>) -> Vec<BlindedMessage> {
+    blinded_messages
+        .into_iter()
+        .map(|(msg, _)| msg)
+        .collect::<Vec<BlindedMessage>>()
+}
+
 #[cfg(test)]
 mod tests {
-    // TODO: Add tests
+    use std::collections::HashMap;
+
+    use monexo_core::{fixture::{read_fixture, read_fixture_as}, keyset::{KeysetId, Keysets, MintKeyset}, primitives::{CurrencyUnit, KeyResponse, KeysResponse, PostSwapResponse}, token::TokenV3};
+    use secp256k1::PublicKey;
+    use url::Url;
+
+    use crate::{client::MockCashuClient, localstore::{sqlite::SqliteLocalStore, LocalStore, WalletKeyset}, wallet::WalletBuilder};
+
+    fn create_mock() -> MockCashuClient {
+        let keys = MintKeyset::new("mykey", "");
+        let key_response = KeyResponse {
+            keys: keys.public_keys.clone(),
+            id: keys.keyset_id.clone(),
+            unit: CurrencyUnit::Usd,
+        };
+        let keys_response = KeysResponse::new(key_response.clone());
+        let keys_by_id_response = keys_response.clone();
+        let keysets = Keysets::new(keys.keyset_id, CurrencyUnit::Usd, true);
+
+        let mut client = MockCashuClient::default();
+        client
+            .expect_get_keys()
+            .returning(move |_| Ok(keys_response.clone()));
+        client
+            .expect_get_keysets()
+            .returning(move |_| Ok(keysets.clone()));
+        client
+            .expect_get_keys_by_id()
+            .returning(move |_, _| Ok(keys_by_id_response.clone()));
+        client.expect_is_v1_supported().returning(move |_| Ok(true));
+        client
+    }
+
+    #[tokio::test]
+    async fn test_blank_blinded_messages_1000_sats() -> anyhow::Result<()> {
+        let localstore = SqliteLocalStore::with_in_memory().await?;
+        let wallet_keyset = create_test_wallet_keyset()?;
+        let mut tx = localstore.begin_tx().await?;
+        localstore.upsert_keyset(&mut tx, &wallet_keyset).await?;
+        tx.commit().await?;
+
+        let client = create_mock();
+
+        let wallet = WalletBuilder::new()
+            .with_client(client)
+            .with_localstore(localstore)
+            .build()
+            .await?;
+        let result = wallet
+            .create_blank(1000.into(), &KeysetId::new("00d31cecf59d18c0")?)
+            .await;
+        println!("{:?}", result);
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert!(result.len() == 10);
+        assert!(result.first().unwrap().0.amount == 1);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_blank_blinded_messages_zero_sats() -> anyhow::Result<()> {
+        let localstore = SqliteLocalStore::with_in_memory().await?;
+        let wallet_keyset = create_test_wallet_keyset()?;
+        let mut tx = localstore.begin_tx().await?;
+        localstore.upsert_keyset(&mut tx, &wallet_keyset).await?;
+        tx.commit().await?;
+
+        let client = create_mock();
+
+        let wallet = WalletBuilder::new()
+            .with_client(client)
+            .with_localstore(localstore)
+            .build()
+            .await?;
+        let result = wallet
+            .create_blank(0.into(), &KeysetId::new("00d31cecf59d18c0")?)
+            .await;
+        println!("{:?}", result);
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_blank_blinded_messages_serialize() -> anyhow::Result<()> {
+        let localstore = SqliteLocalStore::with_in_memory().await?;
+        let wallet_keyset = create_test_wallet_keyset()?;
+        let mut tx = localstore.begin_tx().await?;
+        localstore.upsert_keyset(&mut tx, &wallet_keyset).await?;
+        tx.commit().await?;
+
+        let client = create_mock();
+
+        let wallet = WalletBuilder::new()
+            .with_client(client)
+            .with_localstore(localstore)
+            .build()
+            .await?;
+
+        let result = wallet
+            .create_blank(4000.into(), &KeysetId::new("00d31cecf59d18c0")?)
+            .await?;
+        for (blinded_message, _, _) in result {
+            let out = serde_json::to_string(&blinded_message)?;
+            assert!(!out.is_empty());
+        }
+        Ok(())
+    }
+
+    // #[tokio::test]
+    // async fn test_mint_tokens() -> anyhow::Result<()> {
+    //     let mint_response =
+    //         read_fixture_as::<PostMintBtcOnchainResponse>("post_mint_response_20.json")?;
+
+    //     let mut client = create_mock();
+    //     client
+    //         .expect_post_mint_onchain()
+    //         .returning(move |_, _, _| Ok(mint_response.clone()));
+
+    //     let localstore = SqliteLocalStore::with_in_memory().await?;
+    //     let wallet_keyset = create_test_wallet_keyset()?;
+    //     let mut tx = localstore.begin_tx().await?;
+    //     localstore.upsert_keyset(&mut tx, &wallet_keyset).await?;
+    //     tx.commit().await?;
+
+    //     let wallet = WalletBuilder::new()
+    //         .with_client(client)
+    //         .with_localstore(localstore)
+    //         .build()
+    //         .await?;
+    //     let mint_url = Url::parse("http://127.0.0.1:3338")?;
+
+    //     let result = wallet
+    //         .mint_tokens(
+    //             &mint_url,
+    //             &wallet_keyset,
+    //             20.into(),
+    //             "hash".to_string(),
+    //         )
+    //         .await?;
+    //     assert_eq!(20, result.total_amount());
+    //     result.tokens.into_iter().for_each(|t| {
+    //         assert_eq!(mint_url, t.mint.expect("mint is empty"));
+    //     });
+    //     Ok(())
+    // }
+
+    #[tokio::test]
+    async fn test_swap() -> anyhow::Result<()> {
+        let split_response = read_fixture_as::<PostSwapResponse>("post_swap_response_24_40.json")?;
+        let mut client = create_mock();
+        client
+            .expect_post_swap()
+            .returning(move |_, _, _| Ok(split_response.clone()));
+        let localstore = SqliteLocalStore::with_in_memory().await?;
+        let keyset = create_test_wallet_keyset()?;
+        let mut tx = localstore.begin_tx().await?;
+        localstore.upsert_keyset(&mut tx, &keyset).await?;
+        tx.commit().await?;
+
+        let wallet = WalletBuilder::new()
+            .with_client(client)
+            .with_localstore(localstore)
+            .build()
+            .await?;
+
+        let tokens = read_fixture("token_64.cashu")?.try_into()?;
+        let mint_url = Url::parse("http://127.0.0.1:3338")?;
+        let result = wallet.swap_tokens(&mint_url, &keyset, &tokens, 20.into()).await?;
+
+        let first = result.0;
+
+        assert_eq!(CurrencyUnit::Usd, first.clone().currency_unit.unwrap());
+        assert_eq!(24, first.total_amount());
+
+        let second = result.1;
+
+        assert_eq!(CurrencyUnit::Usd, second.clone().currency_unit.unwrap());
+        assert_eq!(40, second.total_amount());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_get_balance() -> anyhow::Result<()> {
+        let fixture = read_fixture("token_60.cashu")?; // 60 tokens (4,8,16,32)
+        let fixture: TokenV3 = fixture.try_into()?;
+        let local_store = SqliteLocalStore::with_in_memory().await?;
+        let mut tx = local_store.begin_tx().await?;
+        local_store.add_proofs(&mut tx, &fixture.proofs()).await?;
+        tx.commit().await?;
+
+        let wallet = WalletBuilder::new()
+            .with_client(create_mock())
+            .with_localstore(local_store)
+            .build()
+            .await?;
+
+        let result = wallet.get_balance().await?;
+        assert_eq!(60, result);
+        Ok(())
+    }
+
+    fn create_test_wallet_keyset() -> anyhow::Result<WalletKeyset> {
+        let pub_keys = read_fixture_as::<HashMap<u64, PublicKey>>("pub_keys.json")?;
+        let keyset_id = KeysetId::new("00d31cecf59d18c0")?;
+
+        let wallet_keyset = WalletKeyset::new(
+            &keyset_id,
+            0,
+            pub_keys.clone(),
+            true,
+        );
+        Ok(wallet_keyset)
+    }
+
 }

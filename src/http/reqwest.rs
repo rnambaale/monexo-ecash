@@ -70,4 +70,9 @@ impl CrossPlatformHttpClient {
             .await?;
         Self::extract_response_data::<T>(resp).await
     }
+
+    pub async fn get_status(&self, url: &Url) -> Result<u16, MonexoWalletError> {
+        let resp = self.client.get(url.to_owned()).send().await?;
+        Ok(resp.status().as_u16())
+    }
 }
