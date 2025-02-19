@@ -1,5 +1,5 @@
 use axum::{extract::State, Json};
-use monexo_core::primitives::{PostSwapRequest, PostSwapResponse};
+use monexo_core::primitives::{MintInfoResponse, PostSwapRequest, PostSwapResponse};
 
 use crate::{error::MonexoMintError, mint::Mint};
 
@@ -25,4 +25,25 @@ pub async fn post_swap(
     Ok(Json(PostSwapResponse {
         signatures: response,
     }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/v1/info",
+    responses(
+        (status = 200, description = "get mint info", body = [MintInfoResponse])
+    )
+)]
+#[instrument(name = "get_info", skip(_mint), err)]
+pub async fn get_info(State(_mint): State<Mint>) -> Result<Json<MintInfoResponse>, MonexoMintError> {
+    // let mint_info = mint.config.info.clone();
+
+    let mint_info = MintInfoResponse {
+        // name: mint.config.info.name,
+        name: None,
+        version: None,
+        usdc_address: String::from("HVasUUKPrmrAuBpDFiu8BxQKzrMYY5DvyuNXamvaG2nM"),
+        usdc_token_mint: String::from("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU&reference=5t6gQ7Mnr3mmsFYquFGwgEKokq9wrrUgCpwWab93LmLL")
+    };
+    Ok(Json(mint_info))
 }

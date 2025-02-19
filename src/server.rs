@@ -1,7 +1,7 @@
 use crate::mint::Mint;
 use monexo_core::blind::{BlindedMessage, BlindedSignature};
 use monexo_core::keyset::{Keyset, Keysets};
-use monexo_core::primitives::{CurrencyUnit, PostMeltBtcOnchainRequest, PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainRequest, PostMeltQuoteBtcOnchainResponse, PostMintQuoteBtcOnchainRequest, PostMintQuoteBtcOnchainResponse, PostSwapRequest, PostSwapResponse};
+use monexo_core::primitives::{CurrencyUnit, MintInfoResponse, PostMeltBtcOnchainRequest, PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainRequest, PostMeltQuoteBtcOnchainResponse, PostMintQuoteBtcOnchainRequest, PostMintQuoteBtcOnchainResponse, PostSwapRequest, PostSwapResponse};
 use monexo_core::proof::{P2SHScript, Proof, Proofs};
 use tracing::info;
 
@@ -14,7 +14,7 @@ use tower_http::cors::{Any, CorsLayer};
 use utoipa_swagger_ui::SwaggerUi;
 use utoipa::OpenApi;
 
-use crate::routes::default::post_swap;
+use crate::routes::default::{post_swap, get_info};
 use crate::routes::btconchain::{get_mint_quote_btconchain, post_mint_btconchain, post_mint_quote_btconchain, post_melt_quote_btconchain, get_melt_quote_btconchain, post_melt_btconchain};
 
 pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
@@ -68,8 +68,10 @@ pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
         crate::routes::btconchain::get_melt_quote_btconchain,
         crate::routes::btconchain::post_melt_btconchain,
         crate::routes::default::post_swap,
+        crate::routes::default::get_info,
     ),
     components(schemas(
+        MintInfoResponse,
         CurrencyUnit,
         Keysets,
         Keyset,
@@ -103,7 +105,7 @@ fn app(mint: Mint) -> Router {
         // .route("/v1/melt/quote/bolt11/:quote", get(get_melt_quote_bolt11))
         // .route("/v1/melt/bolt11", post(post_melt_bolt11))
         .route("/v1/swap", post(post_swap))
-        // .route("/v1/info", get(get_info))
+        .route("/v1/info", get(get_info))
         ;
 
     let btconchain_routes = {
