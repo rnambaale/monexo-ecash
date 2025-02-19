@@ -1,10 +1,11 @@
 use clap::{Parser, Subcommand};
-use console::Term;
+use console::{style, Term};
 use monexo_core::primitives::PostMintQuoteBtcOnchainResponse;
 use monexo_wallet::{http::CrossPlatformHttpClient, localstore::WalletKeysetFilter};
+use num_format::{Locale, ToFormattedString};
 use qrcode::{render::unicode, QrCode};
 use url::Url;
-use monexocli::cli;
+use monexocli::cli::{self, get_mints_with_balance};
 
 use std::path::PathBuf;
 
@@ -164,6 +165,24 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
             }
+        }
+        Command::Balance => {
+            let total_balance = wallet.get_balance().await?;
+            if total_balance > 0 {
+                let mints = get_mints_with_balance(&wallet).await?;
+                term.write_line(&format!(
+                    "You have balances in {} mints",
+                    style(mints.len()).cyan()
+                ))?;
+
+                for mint in mints {
+                    term.write_line(&format!(
+                        " - {} (usd)",
+                        style(mint.to_formatted_string(&Locale::en)).cyan()
+                    ))?;
+                }
+            }
+            cli::show_total_balance(&wallet).await?;
         }
         _ => {}
     }

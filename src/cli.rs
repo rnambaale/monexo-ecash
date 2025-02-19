@@ -1,7 +1,9 @@
+use std::process::exit;
 use std::time::Duration;
 
 use console::{style, Term};
 use indicatif::{ProgressBar, ProgressStyle};
+use monexo_wallet::error::MonexoWalletError;
 use monexo_wallet::{http::CrossPlatformHttpClient, localstore::sqlite::SqliteLocalStore, wallet::Wallet};
 use num_format::Locale;
 use num_format::ToFormattedString;
@@ -22,4 +24,23 @@ pub async fn show_total_balance(
         style(wallet.get_balance().await?.to_formatted_string(&Locale::en)).cyan()
     ))?;
     Ok(())
+}
+
+pub async fn get_mints_with_balance(
+    wallet: &Wallet<SqliteLocalStore, CrossPlatformHttpClient>,
+) -> Result<Vec<u64>, MonexoWalletError> {
+    let all_proofs = wallet.get_proofs().await?;
+
+    let keysets = wallet.get_wallet_keysets().await?;
+    if keysets.is_empty() {
+        println!("No mints found. Add a mint first with 'moksha-cli add-mint <mint-url>'");
+        exit(0)
+    }
+    Ok(keysets
+        .into_iter()
+        .filter(|k| k.active)
+        .map(|k| {
+            all_proofs.proofs_by_keyset(&k.keyset_id).total_amount()
+        })
+        .collect::<Vec<u64>>())
 }
