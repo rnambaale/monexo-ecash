@@ -5,7 +5,7 @@ use monexo_wallet::{http::CrossPlatformHttpClient, localstore::WalletKeysetFilte
 use num_format::{Locale, ToFormattedString};
 use qrcode::{render::unicode, QrCode};
 use url::Url;
-use monexocli::cli::{self, get_mints_with_balance};
+use monexocli::cli::{self, choose_mint, get_mints_with_balance};
 
 use std::path::PathBuf;
 
@@ -190,6 +190,25 @@ async fn main() -> anyhow::Result<()> {
             let db_path = style(db_path).cyan();
             term.write_line(&format!("Version: {wallet_version}"))?;
             term.write_line(&format!("DB: {db_path}"))?;
+        }
+        Command::Send { amount } => {
+            let mint_balance = choose_mint(&wallet).await?;
+            if mint_balance < amount {
+                term.write_line("Error: Not enough tokens in mint")?;
+                return Ok(());
+            }
+
+            let wallet_keysets = wallet.get_wallet_keysets().await?;
+            let wallet_keyset = wallet_keysets
+                .get_active()
+                .expect("no active keyset found");
+
+            term.write_line(&format!("Sending tokens from mint"))?;
+            let result = wallet.send_tokens(&mint_url, wallet_keyset, amount).await?;
+            let tokens: String = result.try_into()?;
+
+            term.write_line(&format!("Result {amount} (sat):\n{tokens}"))?;
+            cli::show_total_balance(&wallet).await?;
         }
         _ => {}
     }

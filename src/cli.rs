@@ -26,6 +26,19 @@ pub async fn show_total_balance(
     Ok(())
 }
 
+pub async fn choose_mint(
+    wallet: &Wallet<SqliteLocalStore, CrossPlatformHttpClient>,
+) -> Result<u64, MonexoWalletError> {
+    let mints = get_mints_with_balance(wallet).await?;
+
+    if mints.is_empty() {
+        println!("No mints found.");
+        exit(0)
+    }
+
+    Ok(mints[0].clone())
+}
+
 pub async fn get_mints_with_balance(
     wallet: &Wallet<SqliteLocalStore, CrossPlatformHttpClient>,
 ) -> Result<Vec<u64>, MonexoWalletError> {
