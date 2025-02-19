@@ -1,5 +1,5 @@
-use axum::{extract::State, Json};
-use monexo_core::primitives::{MintInfoResponse, PostSwapRequest, PostSwapResponse};
+use axum::{extract::{Path, State}, Json};
+use monexo_core::{keyset::Keysets, primitives::{CurrencyUnit, KeyResponse, KeysResponse, MintInfoResponse, PostSwapRequest, PostSwapResponse}};
 
 use crate::{error::MonexoMintError, mint::Mint};
 
@@ -46,4 +46,38 @@ pub async fn get_info(State(_mint): State<Mint>) -> Result<Json<MintInfoResponse
         usdc_token_mint: String::from("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU&reference=5t6gQ7Mnr3mmsFYquFGwgEKokq9wrrUgCpwWab93LmLL")
     };
     Ok(Json(mint_info))
+}
+
+#[utoipa::path(
+    get,
+    path = "/v1/keysets",
+    responses(
+        (status = 200, description = "get keysets", body = [Keysets])
+    ),
+)]
+#[instrument(skip(mint), err)]
+pub async fn get_keysets(State(mint): State<Mint>) -> Result<Json<Keysets>, MonexoMintError> {
+    Ok(Json(Keysets::new(
+        mint.keyset.keyset_id,
+        CurrencyUnit::Usd,
+        true,
+    )))
+}
+
+#[instrument(skip(mint), err)]
+pub async fn get_keys_by_id(
+    Path(id): Path<String>,
+    State(mint): State<Mint>,
+) -> Result<Json<KeysResponse>, MonexoMintError> {
+    if id != mint.keyset.keyset_id {
+        return Err(MonexoMintError::KeysetNotFound(id));
+    }
+
+    Ok(Json(KeysResponse {
+        keysets: vec![KeyResponse {
+            id: mint.keyset.keyset_id.clone(),
+            unit: CurrencyUnit::Usd,
+            keys: mint.keyset.public_keys,
+        }],
+    }))
 }

@@ -35,6 +35,9 @@ pub enum MonexoMintError {
 
     #[error("MokshaCoreError: {0}")]
     MokshaCore(#[from] monexo_core::error::MonexoCoreError),
+
+    #[error("Keyset not found {0}")]
+    KeysetNotFound(String),
 }
 
 impl IntoResponse for MonexoMintError {
