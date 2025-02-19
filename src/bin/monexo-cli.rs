@@ -1,13 +1,13 @@
 use clap::{Parser, Subcommand};
 use console::{style, Term};
-use monexo_core::primitives::PostMintQuoteBtcOnchainResponse;
+use monexo_core::{primitives::PostMintQuoteBtcOnchainResponse, token::TokenV3};
 use monexo_wallet::{http::CrossPlatformHttpClient, localstore::WalletKeysetFilter};
 use num_format::{Locale, ToFormattedString};
 use qrcode::{render::unicode, QrCode};
 use url::Url;
 use monexocli::cli::{self, choose_mint, get_mints_with_balance};
 
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
 
 #[derive(Parser)]
 #[command(arg_required_else_help(true))]
@@ -24,7 +24,7 @@ enum Command {
     /// Mint tokens
     Mint { amount: u64 },
 
-    /// Pay Bitcoin on chain
+    /// Pay Usdc on chain
     PayOnchain { address: String, amount: u64 },
 
     /// Send tokens
@@ -208,6 +208,16 @@ async fn main() -> anyhow::Result<()> {
             let tokens: String = result.try_into()?;
 
             term.write_line(&format!("Result {amount} (sat):\n{tokens}"))?;
+            cli::show_total_balance(&wallet).await?;
+        }
+        Command::Receive { token } => {
+            let token: TokenV3 = TokenV3::from_str(&token)?;
+            let wallet_keysets = wallet.get_wallet_keysets().await?;
+            let wallet_keyset = wallet_keysets
+                .get_active()
+                .expect("no active keyset found");
+
+            wallet.receive_tokens(&mint_url, wallet_keyset, &token).await?;
             cli::show_total_balance(&wallet).await?;
         }
         _ => {}
