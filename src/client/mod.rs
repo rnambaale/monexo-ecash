@@ -4,7 +4,7 @@ use async_trait::async_trait;
 
 #[cfg(test)]
 use mockall::automock;
-use monexo_core::{blind::BlindedMessage, keyset::Keysets, primitives::{KeysResponse, PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainResponse, PostMintBtcOnchainResponse, PostMintQuoteBtcOnchainResponse, PostSwapResponse}, proof::Proofs};
+use monexo_core::{blind::BlindedMessage, keyset::Keysets, primitives::{KeysResponse, MintInfoResponse, PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainResponse, PostMintBtcOnchainResponse, PostMintQuoteBtcOnchainResponse, PostSwapResponse}, proof::Proofs};
 use url::Url;
 
 use crate::error::MonexoWalletError;
@@ -68,4 +68,6 @@ pub trait CashuClient {
         mint_url: &Url,
         quote: String,
     ) -> Result<PostMeltQuoteBtcOnchainResponse, MonexoWalletError>;
+
+    async fn get_info(&self, mint_url: &Url) -> Result<MintInfoResponse, MonexoWalletError>;
 }

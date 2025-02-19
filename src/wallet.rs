@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use monexo_core::{amount::Amount, blind::{BlindedMessage, BlindedSignature, BlindingFactor}, dhke::Dhke, keyset::KeysetId, primitives::{MintBtcOnchainState, PostMintQuoteBtcOnchainResponse}, proof::{Proof, Proofs}, token::TokenV3};
+use monexo_core::{amount::Amount, blind::{BlindedMessage, BlindedSignature, BlindingFactor}, dhke::Dhke, keyset::KeysetId, primitives::{MintBtcOnchainState, MintInfoResponse, PostMintQuoteBtcOnchainResponse}, proof::{Proof, Proofs}, token::TokenV3};
 use secp256k1::PublicKey;
 use url::Url;
 
@@ -402,11 +402,12 @@ where
     //     Ok((first_tokens, second_tokens))
     // }
 
-    // pub async fn get_mint_info(
-    //     &self,
-    // ) -> Result<MintInfoResponse, MokshaWalletError> {
-    //     self.client.get_info().await
-    // }
+    pub async fn get_mint_info(
+        &self,
+        mint_url: &Url
+    ) -> Result<MintInfoResponse, MonexoWalletError> {
+        self.client.get_info(mint_url).await
+    }
 
     // async fn melt_token(
     //     &self,

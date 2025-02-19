@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use monexo_core::{blind::BlindedMessage, keyset::Keysets, primitives::{KeysResponse, PostMeltBtcOnchainRequest, PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainRequest, PostMeltQuoteBtcOnchainResponse, PostMintBtcOnchainRequest, PostMintBtcOnchainResponse, PostMintQuoteBtcOnchainRequest, PostMintQuoteBtcOnchainResponse, PostSwapRequest, PostSwapResponse}, proof::Proofs};
+use monexo_core::{blind::BlindedMessage, keyset::Keysets, primitives::{KeysResponse, MintInfoResponse, PostMeltBtcOnchainRequest, PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainRequest, PostMeltQuoteBtcOnchainResponse, PostMintBtcOnchainRequest, PostMintBtcOnchainResponse, PostMintQuoteBtcOnchainRequest, PostMintQuoteBtcOnchainResponse, PostSwapRequest, PostSwapResponse}, proof::Proofs};
 
 use crate::{error::MonexoWalletError, http::CrossPlatformHttpClient};
 
@@ -102,5 +102,9 @@ impl CashuClient for CrossPlatformHttpClient {
     ) -> Result<PostMeltQuoteBtcOnchainResponse, MonexoWalletError> {
         self.do_get(&mint_url.join(&format!("/v1/melt/quote/btconchain/{quote}"))?)
             .await
+    }
+
+    async fn get_info(&self, mint_url: &Url) -> Result<MintInfoResponse, MonexoWalletError> {
+        self.do_get(&mint_url.join("v1/info")?).await
     }
 }
