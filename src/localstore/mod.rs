@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use monexo_core::{keyset::KeysetId, proof::Proofs};
 use secp256k1::PublicKey;
-use url::Url;
 
 use crate::error::MonexoWalletError;
 
@@ -15,7 +14,6 @@ pub struct WalletKeyset {
     /// primary key
     pub id: Option<u64>,
     pub keyset_id: KeysetId,
-    pub mint_url: Url,
     // pub currency_unit: CurrencyUnit,
     /// last index used for deriving keys from the master key
     pub last_index: u64,
@@ -24,14 +22,31 @@ pub struct WalletKeyset {
 }
 
 impl WalletKeysetFilter for Vec<WalletKeyset> {
-    fn get_active(&self, mint_url: &Url) -> Option<&WalletKeyset> {
+    fn get_active(&self) -> Option<&WalletKeyset> {
         self.iter()
-            .find(|k| k.mint_url == *mint_url && k.active)
+            .find(|k| k.active)
     }
 }
 
 pub trait WalletKeysetFilter {
-    fn get_active(&self, mint_url: &Url) -> Option<&WalletKeyset>;
+    fn get_active(&self) -> Option<&WalletKeyset>;
+}
+
+impl WalletKeyset {
+    pub fn new(
+        keyset_id: &KeysetId,
+        last_index: u64,
+        public_keys: HashMap<u64, PublicKey>,
+        active: bool,
+    ) -> Self {
+        Self {
+            id: None,
+            keyset_id: keyset_id.to_owned(),
+            last_index,
+            public_keys,
+            active,
+        }
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]

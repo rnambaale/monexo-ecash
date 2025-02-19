@@ -147,11 +147,62 @@ where
         Ok(keysets)
     }
 
-    // pub async fn get_mint_urls(&self) -> Result<Vec<Url>, MonexoWalletError> {
-    //     let keysets = self.get_wallet_keysets().await?;
-    //     let mints: HashSet<Url> = keysets.into_iter().map(|k| k.mint_url).collect();
-    //     Ok(mints.into_iter().collect())
-    // }
+    /// Stores the mints keys in the localstore
+    pub async fn add_mint_keysets(
+        &self,
+        mint_url: &Url,
+    ) -> Result<Vec<WalletKeyset>, MonexoWalletError> {
+        let mint_keysets = self.client.get_keysets(mint_url).await?;
+
+        println!("adding keysets");
+        println!("{:#?}", mint_keysets);
+
+        let mut tx = self.localstore.begin_tx().await?;
+        let mut result = vec![];
+        for keyset in mint_keysets.keysets.iter() {
+            let keysets = self
+                .client
+                .get_keys_by_id(mint_url, keyset.id.clone())
+                .await;
+
+            let public_keys = match keysets {
+                Ok(k) => k
+                    .keysets
+                    .into_iter()
+                    .find(|k| k.id == keyset.id && k.unit == keyset.unit)
+                    .expect("no valid keyset found")
+                    .keys
+                    .clone(),
+                Err(_) => {
+                    //println!("Ignoring keyset without public_keys {:?}", keyset.id);
+                    continue;
+                }
+            };
+
+            // ignore legacy keysets
+            let keyset_id = match KeysetId::new(&keyset.id) {
+                Ok(id) => id,
+                Err(_) => {
+                    //println!("Ignoring legacy keyset {:?}", keyset.id);
+                    continue;
+                }
+            };
+
+            let wallet_keyset = WalletKeyset::new(
+                &keyset_id,
+                0,
+                public_keys,
+                keyset.active,
+            );
+
+            result.push(wallet_keyset.clone());
+            self.localstore
+                .upsert_keyset(&mut tx, &wallet_keyset)
+                .await?;
+        }
+        tx.commit().await?;
+        Ok(result)
+    }
 
     pub async fn get_balance(&self) -> Result<u64, MonexoWalletError> {
         let mut tx = self.localstore.begin_tx().await?;
@@ -444,6 +495,7 @@ where
 
     pub async fn mint_tokens(
         &self,
+        mint_url: &Url,
         wallet_keyset: &WalletKeyset,
         amount: Amount,
         quote_id: String,
@@ -474,7 +526,7 @@ where
         let signatures = self
             .client
             .post_mint_onchain(
-                &wallet_keyset.mint_url,
+                mint_url,
                 quote_id,
                 blinded_messages
                     .clone()
@@ -501,7 +553,7 @@ where
             .collect::<Vec<Proof>>()
             .into();
 
-        let tokens: TokenV3 = (wallet_keyset.mint_url.to_owned(), proofs).into();
+        let tokens: TokenV3 = (mint_url.to_owned(), proofs).into();
         let mut tx = self.localstore.begin_tx().await?;
         self.localstore
             .add_proofs(&mut tx, &tokens.proofs())
@@ -613,4 +665,9 @@ where
         tx.commit().await?;
         Ok(proofs)
     }
+}
+
+#[cfg(test)]
+mod tests {
+    // TODO: Add tests
 }

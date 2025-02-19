@@ -1,3 +1,4 @@
 /target
 .env
 wallet.db
+wallet2.db

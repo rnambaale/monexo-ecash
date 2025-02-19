@@ -10,12 +10,11 @@ CREATE TABLE IF NOT EXISTS proofs (
 
 CREATE TABLE IF NOT EXISTS keysets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    mint_url TEXT NOT NULL,
     keyset_id TEXT NOT NULL,
     active BOOL NOT NULL DEFAULT TRUE,
     last_index INTEGER NOT NULL,
     public_keys TEXT NOT NULL CHECK (json_valid(public_keys)),
-    UNIQUE (keyset_id, mint_url)
+    UNIQUE (keyset_id)
 );
 
 -- Add migration script here
