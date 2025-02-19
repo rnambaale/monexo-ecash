@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use monexo_core::{keyset::KeysetId, proof::{Proof, Proofs}};
 use secp256k1::PublicKey;
 use sqlx::sqlite::SqliteError;
-use url::Url;
 
 use crate::error::MonexoWalletError;
 
@@ -94,7 +93,7 @@ impl LocalStore for SqliteLocalStore {
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
     ) -> Result<Vec<WalletKeyset>, MonexoWalletError> {
-        let rows = sqlx::query!("SELECT id, mint_url, keyset_id, active, last_index, public_keys FROM keysets;")
+        let rows = sqlx::query!("SELECT id, keyset_id, active, last_index, public_keys FROM keysets;")
             .fetch_all(&mut **tx)
             .await?;
 
@@ -102,7 +101,7 @@ impl LocalStore for SqliteLocalStore {
             .iter()
             .map(|row| {
                 let id: i64 = row.id;
-                let mint_url: Url = Url::parse(&row.mint_url).expect("invalid URL in localstore");
+                // let mint_url: Url = Url::parse(&row.mint_url).expect("invalid URL in localstore");
                 let keyset_id: KeysetId =
                     KeysetId::new(&row.keyset_id).expect("invalid keyset_id in localstore");
                 // let currency_unit: String = row.currency_unit.clone();
@@ -113,7 +112,7 @@ impl LocalStore for SqliteLocalStore {
                     serde_json::from_str(&public_keys).expect("invalid json in localstore");
                 Ok(WalletKeyset {
                     id: Some(id as u64),
-                    mint_url,
+                    // mint_url,
                     keyset_id,
                     // currency_unit: currency_unit.into(),
                     active,
@@ -124,24 +123,24 @@ impl LocalStore for SqliteLocalStore {
             .collect::<Result<Vec<WalletKeyset>, SqliteError>>()?)
     }
 
-    // async fn upsert_keyset(
-    //     &self,
-    //     tx: &mut sqlx::Transaction<Self::DB>,
-    //     keyset: &WalletKeyset,
-    // ) -> Result<(), MokshaWalletError> {
-    //     let keyset_id = keyset.keyset_id.to_string();
-    //     let mint_url = keyset.mint_url.as_str();
-    //     let currency_unit = keyset.currency_unit.to_string();
-    //     let last_index = keyset.last_index as i64;
-    //     let public_keys = serde_json::to_string(&keyset.public_keys)?;
-    //     sqlx::query!(
-    //         r#"INSERT INTO keysets (keyset_id, mint_url, currency_unit, last_index, public_keys, active) VALUES ($1, $2, $3, $4, $5, $6)
-    //         ON CONFLICT(keyset_id, mint_url) DO UPDATE SET currency_unit = $3, public_keys = $5, active = $6;
-    //         "#,keyset_id, mint_url, currency_unit, last_index, public_keys, keyset.active)
-    //     .execute(&mut **tx)
-    //     .await?;
-    //     Ok(())
-    // }
+    async fn upsert_keyset(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+        keyset: &WalletKeyset,
+    ) -> Result<(), MonexoWalletError> {
+        let keyset_id = keyset.keyset_id.to_string();
+        // let mint_url = keyset.mint_url.as_str();
+        // let currency_unit = keyset.currency_unit.to_string();
+        let last_index = keyset.last_index as i64;
+        let public_keys = serde_json::to_string(&keyset.public_keys)?;
+        sqlx::query!(
+            r#"INSERT INTO keysets (keyset_id, last_index, public_keys, active) VALUES ($1, $2, $3, $4)
+            ON CONFLICT(keyset_id) DO UPDATE SET public_keys = $3, active = $4;
+            "#,keyset_id, last_index, public_keys, keyset.active)
+        .execute(&mut **tx)
+        .await?;
+        Ok(())
+    }
 
     async fn update_keyset_last_index(
         &self,

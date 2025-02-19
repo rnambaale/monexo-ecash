@@ -62,11 +62,11 @@ pub trait LocalStore {
         tx: &mut sqlx::Transaction<Self::DB>,
     ) -> Result<Vec<WalletKeyset>, MonexoWalletError>;
 
-    // async fn upsert_keyset(
-    //     &self,
-    //     tx: &mut sqlx::Transaction<Self::DB>,
-    //     keyset: &WalletKeyset,
-    // ) -> Result<(), MonexoWalletError>;
+    async fn upsert_keyset(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+        keyset: &WalletKeyset,
+    ) -> Result<(), MonexoWalletError>;
 
     async fn update_keyset_last_index(
         &self,
