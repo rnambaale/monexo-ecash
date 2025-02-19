@@ -77,6 +77,9 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Command::Mint { amount } => {
+            let mint_url = Url::parse("http://127.0.0.1:3338/").unwrap();
+            let mint_info = wallet.get_mint_info(&mint_url).await?;
+
             let quote = {
                 // let nut17 = info.nuts.nut18.expect("nut17 is None");
                 // let payment_method = nut17.payment_methods.first().expect("no payment methods");
@@ -97,15 +100,14 @@ async fn main() -> anyhow::Result<()> {
                 //     return Ok(());
                 // }
 
-                let mint_url = Url::parse("http://127.0.0.1:3338/").unwrap();
                 let PostMintQuoteBtcOnchainResponse { reference, quote, .. } =
                     wallet.create_quote_onchain(&mint_url, amount).await?;
 
                 term.write_line(&format!("Pay onchain to mint tokens, reference: \n\n{reference}"))?;
 
                 let amount = amount as f64 ;
-                let address_string = "HVasUUKPrmrAuBpDFiu8BxQKzrMYY5DvyuNXamvaG2nM";
-                let token_mint = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU&reference=5t6gQ7Mnr3mmsFYquFGwgEKokq9wrrUgCpwWab93LmLL";
+                let address_string = mint_info.usdc_address;
+                let token_mint = mint_info.usdc_token_mint;
                 let bip21_code = format!("solana:{}?amount={}&spl-token={}&reference={}&label=Store&message=Thank%20you!", address_string, amount, token_mint, reference);
                 let image = QrCode::new(bip21_code)?
                     .render::<unicode::Dense1x2>()
@@ -116,7 +118,6 @@ async fn main() -> anyhow::Result<()> {
             };
 
             let wallet_keysets = wallet.get_wallet_keysets().await?;
-            let mint_url = Url::parse("http://127.0.0.1:3338/").unwrap();
             let wallet_keyset = wallet_keysets
                 .get_active(&mint_url)
                 .expect("Keyset not found");
@@ -130,7 +131,6 @@ async fn main() -> anyhow::Result<()> {
                 )
                 .await;
 
-                let mint_url = Url::parse("http://127.0.0.1:3338/").unwrap();
                 if !wallet
                     .is_quote_paid(&mint_url, quote.clone())
                     .await?
