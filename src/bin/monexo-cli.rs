@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use console::{style, Term};
-use monexo_core::{primitives::PostMintQuoteBtcOnchainResponse, token::TokenV3};
+use dialoguer::Confirm;
+use monexo_core::{primitives::{MeltBtcOnchainState, PostMeltBtcOnchainResponse, PostMintQuoteBtcOnchainResponse}, token::TokenV3};
 use monexo_wallet::{http::CrossPlatformHttpClient, localstore::WalletKeysetFilter};
 use num_format::{Locale, ToFormattedString};
 use qrcode::{render::unicode, QrCode};
@@ -24,7 +25,7 @@ enum Command {
     /// Mint tokens
     Mint { amount: u64 },
 
-    /// Pay Usdc on chain
+    /// Pay USDC on chain
     PayOnchain { address: String, amount: u64 },
 
     /// Send tokens
@@ -207,7 +208,7 @@ async fn main() -> anyhow::Result<()> {
             let result = wallet.send_tokens(&mint_url, wallet_keyset, amount).await?;
             let tokens: String = result.try_into()?;
 
-            term.write_line(&format!("Result {amount} (sat):\n{tokens}"))?;
+            term.write_line(&format!("Result {amount} (usd):\n{tokens}"))?;
             cli::show_total_balance(&wallet).await?;
         }
         Command::Receive { token } => {
@@ -220,7 +221,70 @@ async fn main() -> anyhow::Result<()> {
             wallet.receive_tokens(&mint_url, wallet_keyset, &token).await?;
             cli::show_total_balance(&wallet).await?;
         }
-        _ => {}
+        Command::PayOnchain { address, amount } => {
+            let mint_balance = choose_mint(&wallet).await?;
+            if mint_balance < amount {
+                term.write_line("Error: Not enough tokens in mint")?;
+                return Ok(());
+            }
+
+            let wallet_keysets = wallet.get_wallet_keysets().await?;
+            let wallet_keyset = wallet_keysets
+                .get_active()
+                .expect("no active keyset found");
+
+            let quotes = wallet
+                .get_melt_quote_btconchain(&mint_url, address.clone(), amount)
+                .await?;
+
+            if quotes.is_empty() {
+                term.write_line("Error: No quotes found")?;
+                return Ok(());
+            }
+
+            let quote = quotes.first().expect("No quotes found");
+
+            term.write_line(&format!(
+                "Create onchain transaction to melt tokens: amount {} + fee {} = {} (usd)\n{}\n",
+                amount,
+                quote.fee,
+                amount + quote.fee,
+                address
+            ))?;
+
+            let pay_confirmed = Confirm::new().with_prompt("Confirm payment?").interact()?;
+
+            if !pay_confirmed {
+                return Ok(());
+            }
+
+            let PostMeltBtcOnchainResponse { state, txid } =
+                wallet.pay_onchain(&mint_url, wallet_keyset, quote).await?;
+
+            if let Some(txid) = txid.clone() {
+                term.write_line(&format!("Created transaction: {}\n", &txid))?;
+            }
+
+            let progress_bar = cli::progress_bar()?;
+            progress_bar.set_message("Waiting for payment confirmation ...");
+
+            loop {
+                tokio::time::sleep(std::time::Duration::from_millis(2_000)).await;
+
+                // FIXME
+                if state == MeltBtcOnchainState::Paid
+                    || wallet
+                        .is_onchain_paid(&mint_url, quote.quote.clone())
+                        .await?
+                {
+                    progress_bar.finish_with_message("\nTokens melted successfully\n");
+                    cli::show_total_balance(&wallet).await?;
+                    break;
+                } else {
+                    continue;
+                }
+            }
+        }
     }
     Ok(())
 }

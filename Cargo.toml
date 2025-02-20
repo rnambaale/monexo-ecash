@@ -17,6 +17,7 @@ monexo-core = { version = "0.2.1", path = "../monexo-core" }
 anyhow = { workspace = true, features = ["backtrace"] }
 clap = { workspace = true, features = ["derive"] }
 console = { workspace = true }
+dialoguer = { workspace = true }
 num-format = { workspace = true }
 url = { workspace = true }
 qrcode = { workspace = true }
