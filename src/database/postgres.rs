@@ -200,10 +200,11 @@ impl Database for PostgresDB {
         quote: &BtcOnchainMeltQuote,
     ) -> Result<(), MonexoMintError> {
         sqlx::query!(
-            "INSERT INTO onchain_melt_quotes (id, amount, address, fee_total, fee_sat_per_vbyte, expiry, state, description) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+            "INSERT INTO onchain_melt_quotes (id, amount, address, reference, fee_total, fee_sat_per_vbyte, expiry, state, description) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
             quote.quote_id,
             quote.amount as i64,
             quote.address,
+            quote.reference,
             quote.fee_total as i64,
             quote.fee_sat_per_vbyte as i64,
             quote.expiry as i64,
@@ -222,12 +223,13 @@ impl Database for PostgresDB {
         key: &Uuid,
     ) -> Result<BtcOnchainMeltQuote, MonexoMintError> {
         let quote: BtcOnchainMeltQuote = sqlx::query!(
-            "SELECT id, amount,address, fee_total, fee_sat_per_vbyte, expiry, state, description  FROM onchain_melt_quotes WHERE id = $1",
+            "SELECT id, amount,address, reference, fee_total, fee_sat_per_vbyte, expiry, state, description  FROM onchain_melt_quotes WHERE id = $1",
             key
         )
         .map(|row| BtcOnchainMeltQuote {
             quote_id: row.id,
             address: row.address,
+            reference: row.reference,
             amount: row.amount as u64,
             fee_total: row.fee_total as u64,
             fee_sat_per_vbyte: row.fee_sat_per_vbyte as u32,
