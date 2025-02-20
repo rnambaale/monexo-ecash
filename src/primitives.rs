@@ -175,6 +175,7 @@ pub struct BtcOnchainMeltQuote {
     pub quote_id: Uuid,
     pub amount: u64,
     pub address: String,
+    pub reference: String,
     pub fee_total: u64,
     pub fee_sat_per_vbyte: u32,
     pub expiry: u64,
