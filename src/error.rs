@@ -38,6 +38,15 @@ pub enum MonexoMintError {
 
     #[error("Keyset not found {0}")]
     KeysetNotFound(String),
+
+    #[error("Solana RPC client error: {0}")]
+    RpcError(#[from] solana_client::client_error::ClientError),
+
+    #[error("Pubkey invalid {0}")]
+    InvalidRecepientPublicKey(#[from] solana_sdk::pubkey::ParsePubkeyError),
+
+    #[error("Failed to create transfer instruction: {0}")]
+    TransactionFailed(#[from] solana_sdk::program_error::ProgramError),
 }
 
 impl IntoResponse for MonexoMintError {

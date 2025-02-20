@@ -1,6 +1,7 @@
 use std::str::FromStr;
 use solana_client::{nonblocking::rpc_client::RpcClient, rpc_client::GetConfirmedSignaturesForAddress2Config};
 use solana_sdk::pubkey::Pubkey;
+use solana_sdk::signer::EncodableKey;
 use solana_sdk::{signature::Keypair, signer::Signer};
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::signature::Signature;
@@ -50,6 +51,7 @@ pub async fn post_mint_quote_btconchain(
 
     let quote_id = Uuid::new_v4();
     let reference = Keypair::new().pubkey().to_string();
+    // let reference = Pubkey::new_unique(); ??
 
     let quote = BtcOnchainMintQuote {
         quote_id,
@@ -109,7 +111,15 @@ pub async fn get_mint_quote_btconchain(
     // };
 
     // Extract and parse transaction logs
-    let verified = is_paid(quote.amount, &quote.reference).await;
+    // let usdc_mint_address = Pubkey::from_str("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU").unwrap();
+    let monexo_wallet_keypair = Keypair::read_from_file(
+        mint.config.derivation_path.unwrap()
+    ).expect("Failed to load keypair");
+
+    let monexo_wallet_pub_key = monexo_wallet_keypair
+        .try_pubkey()
+        .expect("Failed to load mint pubkey");
+    let verified = is_paid_onchain(quote.amount, &quote.reference, &monexo_wallet_pub_key.to_string()).await;
 
     let state = match verified {
         false => MintBtcOnchainState::Unpaid,
@@ -205,13 +215,20 @@ pub async fn post_melt_quote_btconchain(
     //     .estimate_fee(&address, amount)
     //     .await?;
 
-    // info!("post_melt_quote_onchain fee_reserve: {:#?}", &fee_response);
+    // let sender_keypair = Keypair::read_from_file("./../my-wallet.json").expect("Failed to load mint keypair");
+    // let sender_address = sender_keypair.try_pubkey().expect("Failed to load mint pubkey").to_string();
+    // let fee_response = get_estimated_fees(amount, &sender_address, &address).await?;
+
+    // info!("post_melt_quote_onchain fee_response: {:#?}", &fee_response);
+    let reference = Keypair::new().pubkey().to_string();
 
     let quote = BtcOnchainMeltQuote {
         quote_id: Uuid::new_v4(),
         address,
+        reference,
         amount,
-        fee_total: 0, // fee_response.fee_in_sat,
+        // TODO: when we store 1usd as 1_000_000, and therefore the fees can be stored as u64 as well (amount * 1%)
+        fee_total: 0,
         fee_sat_per_vbyte: 0, //fee_response.sat_per_vbyte,
         expiry: quote_onchain_expiry(),
         state: MeltBtcOnchainState::Unpaid,
@@ -248,7 +265,7 @@ pub async fn get_melt_quote_btconchain(
         .get_onchain_melt_quote(&mut tx, &Uuid::from_str(quote_id.as_str())?)
         .await?;
 
-    let paid = is_onchain_paid(&mint, &quote).await?;
+    let paid = is_paid_onchain(quote.amount, &quote.reference, &quote.address).await;
 
     let state = match paid {
         true => MeltBtcOnchainState::Paid,
@@ -290,7 +307,7 @@ pub async fn post_melt_btconchain(
         .await?;
 
     let txid = mint.melt_onchain(&quote, &melt_request.inputs).await?;
-    let paid = is_onchain_paid(&mint, &quote).await?;
+    let paid = is_paid_onchain(quote.amount, &quote.reference, &quote.address).await;
 
     // FIXME  compute correct state
     let state = match paid {
@@ -311,7 +328,7 @@ pub async fn post_melt_btconchain(
 
     Ok(Json(PostMeltBtcOnchainResponse {
         state,
-        txid: Some(txid),
+        txid: Some(txid.to_string()),
     }))
 }
 
@@ -321,43 +338,10 @@ fn quote_onchain_expiry() -> u64 {
     now.timestamp() as u64
 }
 
-#[allow(dead_code)]
-async fn is_onchain_paid(
-    _mint: &Mint,
-    quote: &BtcOnchainMeltQuote,
-) -> Result<bool, MonexoMintError> {
-    // let min_confs = mint
-    //     .config
-    //     .btconchain_backend
-    //     .clone()
-    //     .unwrap_or_default()
-    //     .min_confirmations;
-
-    // mint.onchain
-    //     .as_ref()
-    //     .expect("onchain backend not configured")
-    //     .is_paid(&quote.address, quote.amount, min_confs)
-    //     .await
-
-    let client = RpcClient::new("https://api.devnet.solana.com".into());
-    let config = GetConfirmedSignaturesForAddress2Config {
-        limit: Some(20),
-        commitment: Some(CommitmentConfig::confirmed()),
-        ..GetConfirmedSignaturesForAddress2Config::default()
-    };
-
-    let reference = Pubkey::from_str(&quote.address).expect("reference is not a valid public key");
-    let signatures = client
-        .get_signatures_for_address_with_config(&reference, config).await
-        .expect("onchain backend not configured");
-
-    Ok(signatures.len() > 0)
-}
-
-async fn is_paid(amount: u64, expected_reference: &str) -> bool {
+async fn is_paid_onchain(amount: u64, transaction_reference: &str, destination_wallet_pub_key: &str) -> bool {
     // Expected values:
-    // let expected_mint = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
-    // let expected_reference = "5t6gQ7Mnr3mmsFYquFGwgEKokq9wrrUgCpwWab93LmLL";
+    // let usdc_spl_mint = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
+    // let transaction_reference = "5t6gQ7Mnr3mmsFYquFGwgEKokq9wrrUgCpwWab93LmLL";
     // let expected_owner = "HVasUUKPrmrAuBpDFiu8BxQKzrMYY5DvyuNXamvaG2nM";
     // let expected_amount_str = "10"; // as reported in uiAmountString
 
@@ -368,7 +352,7 @@ async fn is_paid(amount: u64, expected_reference: &str) -> bool {
         ..GetConfirmedSignaturesForAddress2Config::default()
     };
 
-    let reference = Pubkey::from_str(&expected_reference).expect("reference is not a valid public key");
+    let reference = Pubkey::from_str(&transaction_reference).expect("reference is not a valid public key");
     let signatures = client
         .get_signatures_for_address_with_config(&reference, config).await
         .expect("onchain backend not configured");
@@ -395,8 +379,7 @@ async fn is_paid(amount: u64, expected_reference: &str) -> bool {
         }
     };
 
-    let expected_mint = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
-    let expected_owner  = "HVasUUKPrmrAuBpDFiu8BxQKzrMYY5DvyuNXamvaG2nM";
+    let usdc_spl_mint = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
 
     let amount_string_representation = amount.to_string();
     let expected_amount_str = amount_string_representation.as_str();
@@ -412,14 +395,14 @@ async fn is_paid(amount: u64, expected_reference: &str) -> bool {
 
     let pre_ata_token_balance = get_mint_token_balance(
         &meta.pre_token_balances,
-        &expected_mint,
-        expected_owner
+        &usdc_spl_mint,
+        destination_wallet_pub_key
     );
 
     let post_ata_token_balance = get_mint_token_balance(
         &meta.post_token_balances,
-        expected_mint,
-        expected_owner
+        usdc_spl_mint,
+        destination_wallet_pub_key
     );
 
     let mint_balance_change = post_ata_token_balance - pre_ata_token_balance;
@@ -432,10 +415,10 @@ async fn is_paid(amount: u64, expected_reference: &str) -> bool {
     // // Check that one of the post-token balances shows the expected mint,
     // // destination (owner) and amount.
     // let balance_ok = post_token_balances.iter().any(|balance| {
-    //     // info!("balance.mint == expected_mint.to_string(): {}", balance.mint == expected_mint.to_string());
+    //     // info!("balance.mint == usdc_spl_mint.to_string(): {}", balance.mint == usdc_spl_mint.to_string());
     //     // info!("balance.owner == OptionSerializer::Some(expected_owner.to_string()): {}", balance.owner == OptionSerializer::Some(expected_owner.to_string()));
     //     // info!("balance.ui_token_amount.ui_amount_string == expected_amount_str: {}", balance.ui_token_amount.ui_amount_string == expected_amount_str);
-    //     return balance.mint == expected_mint.to_string()
+    //     return balance.mint == usdc_spl_mint.to_string()
     //         && balance.owner == OptionSerializer::Some(expected_owner.to_string())
     //         && balance.ui_token_amount.ui_amount_string == expected_amount_str
     // });
@@ -476,13 +459,13 @@ async fn is_paid(amount: u64, expected_reference: &str) -> bool {
                     if let Some(info) = parsed_inst.parsed.get("info").and_then(|v| v.as_object()) {
                         // Check that the mint is correct.
                         let mint = info.get("mint").and_then(|v| v.as_str()).unwrap_or("");
-                        if mint != expected_mint {
+                        if mint != usdc_spl_mint {
                             continue;
                         }
 
                         // Check for the reference in the signers array.
                         if let Some(signers) = info.get("signers").and_then(|v| v.as_array()) {
-                            let reference_found = signers.iter().any(|s| s.as_str() == Some(expected_reference));
+                            let reference_found = signers.iter().any(|s| s.as_str() == Some(transaction_reference));
                             if !reference_found {
                                 continue;
                             }
@@ -512,7 +495,6 @@ async fn is_paid(amount: u64, expected_reference: &str) -> bool {
     true
 }
 
-
 ///
 /// Gets a Vec<UiTransactionTokenBalance> and determins the balance on of mint tokens
 /// on the given asscoiated token account address
@@ -520,7 +502,8 @@ async fn is_paid(amount: u64, expected_reference: &str) -> bool {
 fn get_mint_token_balance(
     token_balances: &OptionSerializer<Vec<UiTransactionTokenBalance>>,
     token_address: &str,
-    mint_ata_address: &str) -> f64 {
+    wallet_pub_key: &str
+) -> f64 {
     let token_balances = match token_balances {
         OptionSerializer::Some(balances) => balances,
         _ => {
@@ -531,7 +514,7 @@ fn get_mint_token_balance(
 
     let ata_token_balance = match token_balances.iter().find(|token_balance|
         token_balance.mint == token_address.to_string()
-        && token_balance.owner == OptionSerializer::Some(mint_ata_address.to_string())
+        && token_balance.owner == OptionSerializer::Some(wallet_pub_key.to_string())
     ) {
         Some(token_balance) => token_balance.ui_token_amount.ui_amount,
         _ => {
@@ -544,4 +527,82 @@ fn get_mint_token_balance(
     }
 
     ata_token_balance.unwrap()
+}
+
+#[allow(dead_code)]
+async fn get_estimated_fees(
+    amount: u64,
+    source_address: &str,
+    destination_address: &str
+) -> Result<f64, MonexoMintError> {
+    let rpc_url = "https://api.devnet.solana.com";
+    let client = RpcClient::new(rpc_url.to_string());
+
+    // Fetch the latest blockhash
+    let latest_blockhash = client.get_latest_blockhash().await?;
+
+    // Addresses
+    let source_address = Pubkey::from_str(source_address)?; // Replace with actual sender address
+    let destination_address = Pubkey::from_str(destination_address)?; // Replace with actual recipient address
+    let usdc_mint = Pubkey::from_str("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU")
+        .expect("reference is not a valid public key"); // USDC Mint on Devnet
+
+    // Get ATA (Associated Token Account) addresses
+    let source_ata = spl_associated_token_account::get_associated_token_address(&source_address, &usdc_mint);
+    let destination_ata = spl_associated_token_account::get_associated_token_address(&destination_address, &usdc_mint);
+
+    // Amount and decimals
+    let amount = amount * 1_000_000; // 1 USDC (6 decimal places)
+
+    // Create `transfer_checked` instruction
+    let transfer_ix = spl_token::instruction::transfer_checked(
+        &spl_token::ID, // Token program ID
+        &source_ata,    // Sender ATA
+        &usdc_mint,     // USDC Mint
+        &destination_ata, // Recipient ATA
+        &source_address,        // Owner of sender ATA
+        &[],            // No additional signers
+        amount,
+        6,
+    )?;
+
+    // Create message
+    let message = solana_sdk::message::Message::new_with_blockhash(
+        &[transfer_ix],
+        Some(&source_address),
+        &latest_blockhash
+    );
+
+    // Get estimated fee // 5000
+    let fee_lamports = client.get_fee_for_message(&message).await?;
+
+    // Convert fee to SOL // 0.000005
+    let fee_sol = fee_lamports as f64 / 1_000_000_000.0; // 1 SOL = 1B lamports
+
+    // Fetch SOL/USDC price 173.19
+    let sol_usdc_price = fetch_sol_usdc_price().await?;
+
+    // Convert fee to USDC // 0.00086595
+    let fee_usdc = fee_sol * sol_usdc_price;
+
+    info!("fee_usdc: {}", fee_usdc);
+
+    Ok(fee_usdc)
+}
+
+#[allow(dead_code)]
+async fn fetch_sol_usdc_price() -> Result<f64, MonexoMintError> {
+    let url = "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd";
+    let response = reqwest::Client::new()
+        .get(url)
+        .send().await
+        .expect("could not reach price exchange provider")
+        .text()
+        .await
+        .expect("could not reach price exchange provider");
+
+    let json: serde_json::Value = serde_json::from_str(&response).expect("could not reach price exchange provider");
+    let price = json["solana"]["usd"].as_f64().ok_or("Failed to get SOL/USDC price").expect("failed parse exchange response");
+
+    Ok(price)
 }

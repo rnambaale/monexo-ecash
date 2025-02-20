@@ -1,8 +1,13 @@
 use std::collections::HashSet;
 
 use monexo_core::{blind::{BlindedMessage, BlindedSignature, TotalAmount}, dhke::Dhke, keyset::MintKeyset, primitives::BtcOnchainMeltQuote, proof::Proofs};
+use solana_sdk::{pubkey::Pubkey, signature::Keypair, signer::{EncodableKey, Signer}};
+use solana_client::nonblocking::rpc_client::RpcClient;
+use spl_token::instruction::transfer_checked;
 use sqlx::Transaction;
-
+use std::str::FromStr;
+use solana_sdk::signature::Signature;
+use solana_sdk::instruction::Instruction;
 use crate::{config::{BtcOnchainConfig, BuildParams, DatabaseConfig, MintConfig, MintInfoConfig, ServerConfig, TracingConfig}, database::{postgres::PostgresDB, Database}, error::MonexoMintError};
 use tracing::instrument;
 
@@ -97,7 +102,7 @@ where
         &self,
         quote: &BtcOnchainMeltQuote,
         proofs: &Proofs,
-    ) -> Result<String, MonexoMintError> {
+    ) -> Result<Signature, MonexoMintError> {
         let proofs_amount = proofs.total_amount();
 
         if proofs_amount < quote.amount {
@@ -115,11 +120,17 @@ where
         //     .send_coins(&quote.address, quote.amount, quote.fee_sat_per_vbyte)
         //     .await?;
 
+        let send_response = Self::send_coins(
+            &quote.address,
+            &quote.reference,
+            quote.amount
+        ).await?;
+
         self.db.add_used_proofs(&mut tx, proofs).await?;
         tx.commit().await?;
 
         // Ok(send_response.txid)
-        Ok("some placeholder txid".to_string())
+        Ok(send_response)
     }
 
     fn has_duplicate_pubkeys(outputs: &[BlindedMessage]) -> bool {
@@ -154,6 +165,87 @@ where
         self.db.add_used_proofs(&mut tx, proofs).await?;
         tx.commit().await?;
         Ok(promises)
+    }
+
+    async fn send_coins(
+        recipient: &str,
+        reference: &str,
+        amount: u64
+    ) -> Result<Signature, MonexoMintError> {
+        let rpc_url = "https://api.devnet.solana.com";
+        let client = RpcClient::new(rpc_url.to_string());
+
+        let sender_keypair = Keypair::read_from_file("./../my-wallet.json").expect("Failed to load keypair");
+
+        // Step 3: Define USDC Mint Address on Devnet
+        let usdc_mint = Pubkey::from_str("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU").unwrap();
+
+        // Step 4: Compute Source ATA (must be owned by the sender)
+        let source_ata = spl_associated_token_account::get_associated_token_address(
+            &sender_keypair.try_pubkey().expect("Failed to load mint pubkey"),
+            &usdc_mint,
+        );
+
+        // Step 5: Define recipient and compute their USDC ATA
+        let recipient_pubkey = Pubkey::from_str(recipient)?;
+        let recipient_ata = spl_associated_token_account::get_associated_token_address(
+            &recipient_pubkey,
+            &usdc_mint,
+        );
+
+        // Step 6: Check if the recipient ATA exists
+        let recipient_ata_info = client.get_account(&recipient_ata).await;
+        let mut instructions = vec![];
+
+        if recipient_ata_info.is_err() {
+            // If recipient ATA does not exist, create it
+            let create_ata_ix = spl_associated_token_account::instruction::create_associated_token_account(
+                &sender_keypair.pubkey(), // Payer
+                &recipient_pubkey,         // Wallet owner
+                &usdc_mint,            // Token mint
+                &spl_token::id()
+            );
+            instructions.push(create_ata_ix);
+        }
+
+        // Step 7: Transfer USDC (with decimals checked)
+        let transfer_ix = transfer_checked(
+            &spl_token::id(), // SPL Token Program ID
+            &source_ata, // Source ATA
+            &usdc_mint, // Token Mint Address
+            &recipient_ata, // Destination ATA
+            &sender_keypair.pubkey(), // Authority (signer)
+            &[&sender_keypair.pubkey()], // Signer list
+            amount * 1_000_000, // Amount (1 USDC = 1_000_000 because of 6 decimal places)
+            6, // USDC has 6 decimals
+        )?;
+
+        // Add reference key to the transaction
+        let mut accounts = transfer_ix.accounts;
+        let reference = Pubkey::from_str(&reference).expect("reference is not a valid public key");
+
+        accounts.push(solana_sdk::instruction::AccountMeta::new_readonly(reference, false));
+
+        let transfer_ix = Instruction {
+            program_id: transfer_ix.program_id,
+            accounts,
+            data: transfer_ix.data,
+        };
+
+        instructions.push(transfer_ix);
+
+        // Step 8: Create and Send Transaction
+        let recent_blockhash = client.get_latest_blockhash().await?;
+        let tx = solana_sdk::transaction::Transaction::new_signed_with_payer(
+            &instructions,
+            Some(&sender_keypair.pubkey()),
+            &[&sender_keypair],
+            recent_blockhash,
+        );
+
+        let signature = client.send_and_confirm_transaction(&tx).await?;
+
+        Ok(signature)
     }
 }
 

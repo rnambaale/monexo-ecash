@@ -28,9 +28,12 @@ sqlx = { workspace = true, features = ["postgres", "runtime-tokio", "tls-rustls"
 tokio = { workspace = true, features = ["full"] }
 tower-http = { workspace = true, features = ["cors", "fs", "set-header"] }
 thiserror = { workspace = true }
+reqwest = { workspace = true, features = ["json", "rustls-tls"], default-features = false }
 solana-sdk = { workspace = true }
 solana-client = { workspace = true }
 solana-transaction-status-client-types = { workspace = true }
+spl-associated-token-account = { workspace = true }
+spl-token = { workspace = true }
 solana-transaction-status = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
