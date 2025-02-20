@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use monexo_core::{amount::Amount, blind::{BlindedMessage, BlindedSignature, BlindingFactor, TotalAmount}, dhke::Dhke, keyset::KeysetId, primitives::{CurrencyUnit, MintBtcOnchainState, MintInfoResponse, PostMintQuoteBtcOnchainResponse}, proof::{Proof, Proofs}, token::TokenV3};
+use monexo_core::{amount::Amount, blind::{BlindedMessage, BlindedSignature, BlindingFactor, TotalAmount}, dhke::Dhke, keyset::KeysetId, primitives::{CurrencyUnit, MeltBtcOnchainState, MintBtcOnchainState, MintInfoResponse, PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainResponse, PostMintQuoteBtcOnchainResponse}, proof::{Proof, Proofs}, token::TokenV3};
 use secp256k1::PublicKey;
 use url::Url;
 
@@ -126,19 +126,19 @@ where
         ))
     }
 
-    // pub async fn is_onchain_paid(
-    //     &self,
-    //     mint_url: &Url,
-    //     quote: String,
-    // ) -> Result<bool, MokshaWalletError> {
-    //     // FIXME add method get_onchain_state
-    //     Ok(self
-    //         .client
-    //         .get_melt_quote_onchain(mint_url, quote)
-    //         .await?
-    //         .state
-    //         == MeltBtcOnchainState::Paid)
-    // }
+    pub async fn is_onchain_paid(
+        &self,
+        mint_url: &Url,
+        quote: String,
+    ) -> Result<bool, MonexoWalletError> {
+        // FIXME add method get_onchain_state
+        Ok(self
+            .client
+            .get_melt_quote_onchain(mint_url, quote)
+            .await?
+            .state
+            == MeltBtcOnchainState::Paid)
+    }
 
     pub async fn get_wallet_keysets(&self) -> Result<Vec<WalletKeyset>, MonexoWalletError> {
         let mut tx = self.localstore.begin_tx().await?;
@@ -153,9 +153,6 @@ where
         mint_url: &Url,
     ) -> Result<Vec<WalletKeyset>, MonexoWalletError> {
         let mint_keysets = self.client.get_keysets(mint_url).await?;
-
-        println!("adding keysets");
-        println!("{:#?}", mint_keysets);
 
         let mut tx = self.localstore.begin_tx().await?;
         let mut result = vec![];
@@ -278,67 +275,68 @@ where
     //         .await
     // }
 
-    // pub async fn get_melt_quote_btconchain(
-    //     &self,
-    //     mint_url: &Url,
-    //     address: String,
-    //     amount: u64,
-    // ) -> Result<Vec<PostMeltQuoteBtcOnchainResponse>, MokshaWalletError> {
-    //     self.client
-    //         .post_melt_quote_onchain(mint_url, address, amount, CurrencyUnit::Sat)
-    //         .await
-    // }
+    pub async fn get_melt_quote_btconchain(
+        &self,
+        mint_url: &Url,
+        address: String,
+        amount: u64,
+    ) -> Result<Vec<PostMeltQuoteBtcOnchainResponse>, MonexoWalletError> {
+        self.client
+            .post_melt_quote_onchain(mint_url, address, amount)
+            .await
+    }
 
-    // pub async fn pay_onchain(
-    //     &self,
-    //     wallet_keyset: &WalletKeyset,
-    //     melt_quote: &PostMeltQuoteBtcOnchainResponse,
-    // ) -> Result<PostMeltBtcOnchainResponse, MokshaWalletError> {
-    //     let mut tx = self.localstore.begin_tx().await?;
-    //     let all_proofs = self.localstore.get_proofs(&mut tx).await?;
-    //     tx.commit().await?;
+    pub async fn pay_onchain(
+        &self,
+        mint_url: &Url,
+        wallet_keyset: &WalletKeyset,
+        melt_quote: &PostMeltQuoteBtcOnchainResponse,
+    ) -> Result<PostMeltBtcOnchainResponse, MonexoWalletError> {
+        let mut tx = self.localstore.begin_tx().await?;
+        let all_proofs = self.localstore.get_proofs(&mut tx).await?;
+        tx.commit().await?;
 
-    //     let ln_amount = melt_quote.amount + melt_quote.fee;
+        let ln_amount = melt_quote.amount + melt_quote.fee;
 
-    //     if ln_amount > all_proofs.total_amount() {
-    //         return Err(MokshaWalletError::NotEnoughTokens);
-    //     }
-    //     let selected_proofs = all_proofs.proofs_for_amount(ln_amount)?;
+        if ln_amount > all_proofs.total_amount() {
+            return Err(MonexoWalletError::NotEnoughTokens);
+        }
+        let selected_proofs = all_proofs.proofs_for_amount(ln_amount)?;
 
-    //     let mut tx = self.localstore.begin_tx().await?;
-    //     let total_proofs = {
-    //         let selected_tokens =
-    //             (wallet_keyset.mint_url.to_owned(), selected_proofs.clone()).into();
-    //         let swap_result = self
-    //             .swap_tokens(wallet_keyset, &selected_tokens, ln_amount.into())
-    //             .await?;
-    //         self.localstore
-    //             .delete_proofs(&mut tx, &selected_proofs)
-    //             .await?;
-    //         self.localstore
-    //             .add_proofs(&mut tx, &swap_result.0.proofs())
-    //             .await?;
+        let mut tx = self.localstore.begin_tx().await?;
+        let total_proofs = {
+            let selected_tokens =
+                (mint_url.to_owned(), selected_proofs.clone()).into();
+            let swap_result = self
+                .swap_tokens(mint_url, wallet_keyset, &selected_tokens, ln_amount.into())
+                .await?;
+            self.localstore
+                .delete_proofs(&mut tx, &selected_proofs)
+                .await?;
+            self.localstore
+                .add_proofs(&mut tx, &swap_result.0.proofs())
+                .await?;
 
-    //         swap_result.1.proofs()
-    //     };
+            swap_result.1.proofs()
+        };
 
-    //     let melt_response = self
-    //         .client
-    //         .post_melt_onchain(
-    //             &wallet_keyset.mint_url,
-    //             total_proofs.clone(),
-    //             melt_quote.quote.clone(),
-    //         )
-    //         .await?;
+        let melt_response = self
+            .client
+            .post_melt_onchain(
+                &mint_url,
+                total_proofs.clone(),
+                melt_quote.quote.clone(),
+            )
+            .await?;
 
-    //     if melt_response.state == MeltBtcOnchainState::Paid {
-    //         self.localstore
-    //             .delete_proofs(&mut tx, &total_proofs)
-    //             .await?;
-    //     }
-    //     tx.commit().await?;
-    //     Ok(melt_response)
-    // }
+        if melt_response.state == MeltBtcOnchainState::Paid {
+            self.localstore
+                .delete_proofs(&mut tx, &total_proofs)
+                .await?;
+        }
+        tx.commit().await?;
+        Ok(melt_response)
+    }
 
     async fn create_secrets(
         &self,

@@ -85,7 +85,6 @@ impl CashuClient for CrossPlatformHttpClient {
         mint_url: &Url,
         address: String,
         amount: u64,
-        // unit: CurrencyUnit,
     ) -> Result<Vec<PostMeltQuoteBtcOnchainResponse>, MonexoWalletError> {
         let body = PostMeltQuoteBtcOnchainRequest {
             address,

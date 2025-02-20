@@ -60,7 +60,6 @@ pub trait CashuClient {
         mint_url: &Url,
         address: String,
         amount: u64,
-        // unit: CurrencyUnit,
     ) -> Result<Vec<PostMeltQuoteBtcOnchainResponse>, MonexoWalletError>;
 
     async fn get_melt_quote_onchain(
