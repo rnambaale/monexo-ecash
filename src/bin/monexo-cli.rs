@@ -25,7 +25,7 @@ enum Command {
     /// Mint tokens
     Mint { amount: u64 },
 
-    /// Pay USDC on chain
+    /// Pay micro USDC on chain
     PayOnchain { address: String, amount: u64 },
 
     /// Send tokens
@@ -90,20 +90,20 @@ async fn main() -> anyhow::Result<()> {
 
             let quote = {
                 // TODO: Fetch this from backend
-                let min_amount: u64 = 10;
+                let min_amount: u64 = 10_000_000;
                 if amount < min_amount {
                     term.write_line(&format!(
-                        "Amount too low. Minimum amount is {} (usd)",
+                        "Amount too low. Minimum amount is {} (micro usd)",
                         min_amount.to_formatted_string(&Locale::en)
                     ))?;
                     return Ok(());
                 }
 
                 // TODO: Fetch this from backend
-                let max_amount: u64 = 1_000_000;
+                let max_amount: u64 = 1_000_000_000;
                 if amount > max_amount {
                     term.write_line(&format!(
-                        "Amount too high. Maximum amount is {} (usd)",
+                        "Amount too high. Maximum amount is {} (micro usd)",
                         max_amount.to_formatted_string(&Locale::en)
                     ))?;
                     return Ok(());
@@ -114,10 +114,10 @@ async fn main() -> anyhow::Result<()> {
 
                 term.write_line(&format!("Pay onchain to mint tokens, reference: \n\n{reference}"))?;
 
-                let amount = amount as f64 ;
+                let amount_usd = (amount / 1_000_000) as f64;
                 let address_string = mint_info.usdc_address;
                 let token_mint = mint_info.usdc_token_mint;
-                let bip21_code = format!("solana:{}?amount={}&spl-token={}&reference={}&label=Monexo&message=Thank%20you!", address_string, amount, token_mint, reference);
+                let bip21_code = format!("solana:{}?amount={}&spl-token={}&reference={}&label=Monexo&message=Thank%20you!", address_string, amount_usd, token_mint, reference);
                 let image = QrCode::new(bip21_code)?
                     .render::<unicode::Dense1x2>()
                     .quiet_zone(true)
@@ -179,7 +179,7 @@ async fn main() -> anyhow::Result<()> {
 
                 for mint in mints {
                     term.write_line(&format!(
-                        " - {} (usd)",
+                        " - {} (micro usd)",
                         style(mint.to_formatted_string(&Locale::en)).cyan()
                     ))?;
                 }
@@ -208,7 +208,7 @@ async fn main() -> anyhow::Result<()> {
             let result = wallet.send_tokens(&mint_url, wallet_keyset, amount).await?;
             let tokens: String = result.try_into()?;
 
-            term.write_line(&format!("Result {amount} (usd):\n{tokens}"))?;
+            term.write_line(&format!("Result {amount} (micro usd):\n{tokens}"))?;
             cli::show_total_balance(&wallet).await?;
         }
         Command::Receive { token } => {
@@ -222,6 +222,26 @@ async fn main() -> anyhow::Result<()> {
             cli::show_total_balance(&wallet).await?;
         }
         Command::PayOnchain { address, amount } => {
+            // TODO: Fetch this from backend
+            let min_amount: u64 = 10_000_000;
+            if amount < min_amount {
+                term.write_line(&format!(
+                    "Amount too low. Minimum amount is {} (micro usd)",
+                    min_amount.to_formatted_string(&Locale::en)
+                ))?;
+                return Ok(());
+            }
+
+            // TODO: Fetch this from backend
+            let max_amount: u64 = 1_000_000_000;
+            if amount > max_amount {
+                term.write_line(&format!(
+                    "Amount too high. Maximum amount is {} (micro usd)",
+                    max_amount.to_formatted_string(&Locale::en)
+                ))?;
+                return Ok(());
+            }
+
             let mint_balance = choose_mint(&wallet).await?;
             if mint_balance < amount {
                 term.write_line("Error: Not enough tokens in mint")?;
@@ -245,7 +265,7 @@ async fn main() -> anyhow::Result<()> {
             let quote = quotes.first().expect("No quotes found");
 
             term.write_line(&format!(
-                "Create onchain transaction to melt tokens: amount {} + fee {} = {} (usd)\n{}\n",
+                "Create onchain transaction to melt tokens: amount {} + fee {} = {} (micro usd)\n{}\n",
                 amount,
                 quote.fee,
                 amount + quote.fee,

@@ -20,7 +20,7 @@ pub async fn show_total_balance(
 ) -> anyhow::Result<()> {
     let term = Term::stdout();
     term.write_line(&format!(
-        "New total balance {} (usd)",
+        "New total balance {} (micro usd)",
         style(wallet.get_balance().await?.to_formatted_string(&Locale::en)).cyan()
     ))?;
     Ok(())
