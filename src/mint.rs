@@ -216,7 +216,7 @@ where
             &recipient_ata, // Destination ATA
             &sender_keypair.pubkey(), // Authority (signer)
             &[&sender_keypair.pubkey()], // Signer list
-            amount * 1_000_000, // Amount (1 USDC = 1_000_000 because of 6 decimal places)
+            amount, //This is already a micro-usd Amount (1 USDC = 1_000_000 because of 6 decimal places)
             6, // USDC has 6 decimals
         )?;
 

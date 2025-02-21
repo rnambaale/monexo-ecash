@@ -14,9 +14,6 @@ use tracing::{info, instrument};
 use uuid::Uuid;
 use chrono::{Duration, Utc};
 use solana_transaction_status_client_types::{UiTransactionEncoding, UiMessage, UiInstruction, UiParsedInstruction};
-// use solana_transaction_status::{
-//     EncodedConfirmedTransactionWithStatusMeta, UiInstruction, UiMessage, UiParsedMessage,
-// };
 
 use crate::{database::Database, error::MonexoMintError, mint::Mint};
 
@@ -227,8 +224,7 @@ pub async fn post_melt_quote_btconchain(
         address,
         reference,
         amount,
-        // TODO: when we store 1usd as 1_000_000, and therefore the fees can be stored as u64 as well (amount * 1%)
-        fee_total: 0,
+        fee_total: ((amount as f64) * 0.01) as u64,
         fee_sat_per_vbyte: 0, //fee_response.sat_per_vbyte,
         expiry: quote_onchain_expiry(),
         state: MeltBtcOnchainState::Unpaid,
@@ -381,6 +377,7 @@ async fn is_paid_onchain(amount: u64, transaction_reference: &str, destination_w
 
     let usdc_spl_mint = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
 
+    let amount = amount / 1_000_000;
     let amount_string_representation = amount.to_string();
     let expected_amount_str = amount_string_representation.as_str();
 
@@ -552,7 +549,7 @@ async fn get_estimated_fees(
     let destination_ata = spl_associated_token_account::get_associated_token_address(&destination_address, &usdc_mint);
 
     // Amount and decimals
-    let amount = amount * 1_000_000; // 1 USDC (6 decimal places)
+    // let amount = amount * 1_000_000; // 1 USDC (6 decimal places)
 
     // Create `transfer_checked` instruction
     let transfer_ix = spl_token::instruction::transfer_checked(
@@ -562,7 +559,7 @@ async fn get_estimated_fees(
         &destination_ata, // Recipient ATA
         &source_address,        // Owner of sender ATA
         &[],            // No additional signers
-        amount,
+        amount, // micro-usd Amount
         6,
     )?;
 
