@@ -212,7 +212,7 @@ pub async fn post_melt_quote_btconchain(
     //     .estimate_fee(&address, amount)
     //     .await?;
 
-    // let sender_keypair = Keypair::read_from_file("./../my-wallet.json").expect("Failed to load mint keypair");
+    // let sender_keypair = Keypair::read_from_file("./../wallet.json").expect("Failed to load mint keypair");
     // let sender_address = sender_keypair.try_pubkey().expect("Failed to load mint pubkey").to_string();
     // let fee_response = get_estimated_fees(amount, &sender_address, &address).await?;
 

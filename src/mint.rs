@@ -175,7 +175,7 @@ where
         let rpc_url = "https://api.devnet.solana.com";
         let client = RpcClient::new(rpc_url.to_string());
 
-        let sender_keypair = Keypair::read_from_file("./../my-wallet.json").expect("Failed to load keypair");
+        let sender_keypair = Keypair::read_from_file("./../wallet.json").expect("Failed to load keypair");
 
         // Step 3: Define USDC Mint Address on Devnet
         let usdc_mint = Pubkey::from_str("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU").unwrap();
