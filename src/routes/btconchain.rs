@@ -54,6 +54,7 @@ pub async fn post_mint_quote_btconchain(
         quote_id,
         reference,
         amount: request.amount,
+        fee_total: ((request.amount as f64) * 0.01) as u64,
         expiry: quote_onchain_expiry(),
         state: MintBtcOnchainState::Unpaid,
     };
@@ -260,8 +261,8 @@ pub async fn get_melt_quote_btconchain(
         .db
         .get_onchain_melt_quote(&mut tx, &Uuid::from_str(quote_id.as_str())?)
         .await?;
-
-    let paid = is_paid_onchain(quote.amount, &quote.reference, &quote.address).await;
+    let expected_paid_amount = quote.amount - quote.fee_total;
+    let paid = is_paid_onchain(expected_paid_amount, &quote.reference, &quote.address).await;
 
     let state = match paid {
         true => MeltBtcOnchainState::Paid,
@@ -303,7 +304,8 @@ pub async fn post_melt_btconchain(
         .await?;
 
     let txid = mint.melt_onchain(&quote, &melt_request.inputs).await?;
-    let paid = is_paid_onchain(quote.amount, &quote.reference, &quote.address).await;
+    let expected_paid_amount = quote.amount - quote.fee_total;
+    let paid = is_paid_onchain(expected_paid_amount, &quote.reference, &quote.address).await;
 
     // FIXME  compute correct state
     let state = match paid {
@@ -377,10 +379,6 @@ async fn is_paid_onchain(amount: u64, transaction_reference: &str, destination_w
 
     let usdc_spl_mint = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
 
-    let amount = amount / 1_000_000;
-    let amount_string_representation = amount.to_string();
-    let expected_amount_str = amount_string_representation.as_str();
-
     // === 1. Verify the post-transaction token balances ===
     let meta = match &tx.transaction.meta {
         Some(m) => m,
@@ -404,8 +402,8 @@ async fn is_paid_onchain(amount: u64, transaction_reference: &str, destination_w
 
     let mint_balance_change = post_ata_token_balance - pre_ata_token_balance;
 
-    if mint_balance_change < amount as f64 {
-        eprintln!("Post token balance verification failed.");
+    if mint_balance_change < amount {
+        eprintln!("Post token balance verification at destination failed.");
         return false;
     }
 
@@ -472,7 +470,7 @@ async fn is_paid_onchain(amount: u64, transaction_reference: &str, destination_w
 
                         // Check that the transferred amount is 10 USDC.
                         if let Some(token_amount) = info.get("tokenAmount") {
-                            if token_amount.get("uiAmountString").and_then(|s| s.as_str()) == Some(expected_amount_str) {
+                            if token_amount.get("amount").and_then(|s| s.as_str()) == Some(amount.to_string().as_str()) {
                                 transfer_verified = true;
                                 break;
                             }
@@ -500,12 +498,12 @@ fn get_mint_token_balance(
     token_balances: &OptionSerializer<Vec<UiTransactionTokenBalance>>,
     token_address: &str,
     wallet_pub_key: &str
-) -> f64 {
+) -> u64 {
     let token_balances = match token_balances {
         OptionSerializer::Some(balances) => balances,
         _ => {
             eprintln!("No pre token balances found in transaction meta");
-            return 0.0;
+            return 0;
         }
     };
 
@@ -513,17 +511,13 @@ fn get_mint_token_balance(
         token_balance.mint == token_address.to_string()
         && token_balance.owner == OptionSerializer::Some(wallet_pub_key.to_string())
     ) {
-        Some(token_balance) => token_balance.ui_token_amount.ui_amount,
+        Some(token_balance) => token_balance.ui_token_amount.amount.as_str(),
         _ => {
-            return 0.0;
+            return 0;
         }
     };
 
-    if ata_token_balance.is_none() {
-        return 0.0;
-    }
-
-    ata_token_balance.unwrap()
+    ata_token_balance.parse::<u64>().unwrap_or(0)
 }
 
 #[allow(dead_code)]

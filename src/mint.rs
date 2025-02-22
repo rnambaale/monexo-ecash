@@ -120,16 +120,16 @@ where
         //     .send_coins(&quote.address, quote.amount, quote.fee_sat_per_vbyte)
         //     .await?;
 
+        let amount_to_send = quote.amount - quote.fee_total;
         let send_response = Self::send_coins(
             &quote.address,
             &quote.reference,
-            quote.amount
+            amount_to_send
         ).await?;
 
         self.db.add_used_proofs(&mut tx, proofs).await?;
         tx.commit().await?;
 
-        // Ok(send_response.txid)
         Ok(send_response)
     }
 
