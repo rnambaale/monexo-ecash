@@ -29,6 +29,7 @@ pub struct PostMintQuoteBtcOnchainRequest {
 pub struct PostMintQuoteBtcOnchainResponse {
     pub quote: String,
     pub reference: String,
+    pub fee: u64,
     pub state: MintBtcOnchainState,
     pub expiry: u64,
 }
@@ -75,6 +76,7 @@ impl FromStr for MintBtcOnchainState {
 pub struct BtcOnchainMintQuote {
     pub quote_id: Uuid,
     pub reference: String,
+    pub fee_total: u64,
     // pub unit: CurrencyUnit,
     pub amount: u64,
     pub expiry: u64,
@@ -86,6 +88,7 @@ impl From<BtcOnchainMintQuote> for PostMintQuoteBtcOnchainResponse {
         Self {
             quote: quote.quote_id.to_string(),
             reference: quote.reference,
+            fee: quote.fee_total,
             state: quote.state,
             expiry: quote.expiry,
         }
