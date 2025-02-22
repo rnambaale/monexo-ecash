@@ -296,7 +296,7 @@ where
         let all_proofs = self.localstore.get_proofs(&mut tx).await?;
         tx.commit().await?;
 
-        let ln_amount = melt_quote.amount + melt_quote.fee;
+        let ln_amount = melt_quote.amount;
 
         if ln_amount > all_proofs.total_amount() {
             return Err(MonexoWalletError::NotEnoughTokens);
