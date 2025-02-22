@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use monexo_core::{proof::Proofs, primitives::{BtcOnchainMintQuote, BtcOnchainMeltQuote}};
 
-use crate::{error::MonexoMintError, model::Invoice};
+use crate::error::MonexoMintError;
 use uuid::Uuid;
 
 pub mod postgres;
@@ -20,25 +20,6 @@ pub trait Database {
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
         proofs: &Proofs,
-    ) -> Result<(), MonexoMintError>;
-
-    async fn get_pending_invoice(
-        &self,
-        tx: &mut sqlx::Transaction<Self::DB>,
-        key: String,
-    ) -> Result<Invoice, MonexoMintError>;
-
-    async fn add_pending_invoice(
-        &self,
-        tx: &mut sqlx::Transaction<Self::DB>,
-        key: String,
-        invoice: &Invoice,
-    ) -> Result<(), MonexoMintError>;
-
-    async fn delete_pending_invoice(
-        &self,
-        tx: &mut sqlx::Transaction<Self::DB>,
-        key: String,
     ) -> Result<(), MonexoMintError>;
 
     async fn add_onchain_mint_quote(

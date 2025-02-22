@@ -407,21 +407,6 @@ async fn is_paid_onchain(amount: u64, transaction_reference: &str, destination_w
         return false;
     }
 
-    // // Check that one of the post-token balances shows the expected mint,
-    // // destination (owner) and amount.
-    // let balance_ok = post_token_balances.iter().any(|balance| {
-    //     // info!("balance.mint == usdc_spl_mint.to_string(): {}", balance.mint == usdc_spl_mint.to_string());
-    //     // info!("balance.owner == OptionSerializer::Some(expected_owner.to_string()): {}", balance.owner == OptionSerializer::Some(expected_owner.to_string()));
-    //     // info!("balance.ui_token_amount.ui_amount_string == expected_amount_str: {}", balance.ui_token_amount.ui_amount_string == expected_amount_str);
-    //     return balance.mint == usdc_spl_mint.to_string()
-    //         && balance.owner == OptionSerializer::Some(expected_owner.to_string())
-    //         && balance.ui_token_amount.ui_amount_string == expected_amount_str
-    // });
-    // if !balance_ok {
-    //     eprintln!("Post token balance verification failed.");
-    //     return false;
-    // }
-
     // === 2. Verify the transfer instruction details ===
     // We expect the transaction message to be parsed.
     let ui_tx = match &tx.transaction.transaction {

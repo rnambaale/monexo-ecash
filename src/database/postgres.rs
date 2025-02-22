@@ -7,7 +7,7 @@ use sqlx::postgres::PgPoolOptions;
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::{config::DatabaseConfig, error::MonexoMintError, model::Invoice};
+use crate::{config::DatabaseConfig, error::MonexoMintError};
 
 use super::Database;
 
@@ -81,57 +81,6 @@ impl Database for PostgresDB {
             .await?;
         }
 
-        Ok(())
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    async fn get_pending_invoice(
-        &self,
-        tx: &mut sqlx::Transaction<Self::DB>,
-        key: String,
-    ) -> Result<Invoice, MonexoMintError> {
-        let invoice: Invoice = sqlx::query!(
-            "SELECT amount, payment_request FROM pending_invoices WHERE key = $1",
-            key
-        )
-        .map(|row| Invoice {
-            amount: row.amount as u64,
-            payment_request: row.payment_request,
-        })
-        .fetch_one(&mut **tx)
-        .await?;
-
-        Ok(invoice)
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    async fn add_pending_invoice(
-        &self,
-        tx: &mut sqlx::Transaction<Self::DB>,
-        key: String,
-        invoice: &Invoice,
-    ) -> Result<(), MonexoMintError> {
-        sqlx::query!(
-            "INSERT INTO pending_invoices (key, amount, payment_request) VALUES ($1, $2, $3)",
-            key,
-            invoice.amount as i64,
-            invoice.payment_request
-        )
-        .execute(&mut **tx)
-        .await?;
-
-        Ok(())
-    }
-
-    #[instrument(level = "debug", skip(self), err)]
-    async fn delete_pending_invoice(
-        &self,
-        tx: &mut sqlx::Transaction<Self::DB>,
-        key: String,
-    ) -> Result<(), MonexoMintError> {
-        sqlx::query!("DELETE FROM pending_invoices WHERE key = $1", key)
-            .execute(&mut **tx)
-            .await?;
         Ok(())
     }
 
