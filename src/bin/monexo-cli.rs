@@ -88,7 +88,7 @@ async fn main() -> anyhow::Result<()> {
         Command::Mint { amount } => {
             let mint_info = wallet.get_mint_info(&mint_url).await?;
 
-            let quote = {
+            let (quote, fee) = {
                 // TODO: Fetch this from backend
                 let min_amount: u64 = 10_000_000;
                 if amount < min_amount {
@@ -109,10 +109,15 @@ async fn main() -> anyhow::Result<()> {
                     return Ok(());
                 }
 
-                let PostMintQuoteBtcOnchainResponse { reference, quote, .. } =
+                let PostMintQuoteBtcOnchainResponse { reference, quote, fee, .. } =
                     wallet.create_quote_onchain(&mint_url, amount).await?;
 
-                term.write_line(&format!("Pay onchain to mint tokens, reference: \n\n{reference}"))?;
+                term.write_line(&format!(
+                    "Pay onchain to mint tokens,
+                    \n amount: {amount}
+                    \n fee: {fee}
+                    \n you will receive tokens worth {} micro usd", (amount - fee)
+                ))?;
 
                 let amount_usd = (amount / 1_000_000) as f64;
                 let address_string = mint_info.usdc_address;
@@ -123,7 +128,7 @@ async fn main() -> anyhow::Result<()> {
                     .quiet_zone(true)
                     .build();
                 term.write_line(&image)?;
-                quote
+                (quote, fee)
             };
 
             let wallet_keysets = wallet.get_wallet_keysets().await?;
@@ -148,6 +153,7 @@ async fn main() -> anyhow::Result<()> {
                 }
 
                 // FIXME store quote in db and add option to retry minting later
+                let amount = amount - fee;
                 let mint_result = wallet
                     .mint_tokens(&mint_url, wallet_keyset, amount.into(), quote.clone())
                     .await;
@@ -265,10 +271,10 @@ async fn main() -> anyhow::Result<()> {
             let quote = quotes.first().expect("No quotes found");
 
             term.write_line(&format!(
-                "Create onchain transaction to melt tokens: amount {} + fee {} = {} (micro usd)\n{}\n",
+                "Create onchain transaction to melt tokens: amount {} - fee {} = {} (micro usd)\n{}\n",
                 amount,
                 quote.fee,
-                amount + quote.fee,
+                amount - quote.fee,
                 address
             ))?;
 
