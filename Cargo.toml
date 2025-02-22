@@ -20,7 +20,7 @@ chrono = { workspace = true }
 dotenvy = { workspace = true }
 hex = { workspace = true }
 hyper = { workspace = true }
-monexo-core = { path = "../monexo-core", version = "0.2.1" }
+monexo-core = { path = "../monexo-core", version = "0.1.0" }
 utoipa = { workspace = true, features = ["axum_extras"] }
 utoipa-swagger-ui = { workspace = true, features = ["axum"] }
 uuid = { workspace = true, features = ["serde", "v4"] }
