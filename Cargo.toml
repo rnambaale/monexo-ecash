@@ -1,6 +1,6 @@
 [package]
 name = "monexo-core"
-version = "0.2.1"
+version = "0.1.0"
 edition = "2021"
 license = "MIT"
 description = "A library for building applications for the ecash protocol"
