@@ -13,7 +13,7 @@ path = "src/lib.rs"
 
 [dependencies]
 monexo-wallet = { version = "0.1.0", path = "../monexo-wallet" }
-monexo-core = { version = "0.2.1", path = "../monexo-core" }
+monexo-core = { version = "0.1.0", path = "../monexo-core" }
 anyhow = { workspace = true, features = ["backtrace"] }
 clap = { workspace = true, features = ["derive"] }
 console = { workspace = true }
