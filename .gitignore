@@ -1,0 +1,4 @@
+/target
+.env
+wallet.json
+wallet-fees.json
