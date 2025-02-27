@@ -1,0 +1,27 @@
+[package]
+name = "monexo-wallet"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = { workspace = true, features = ["backtrace"] }
+async-trait = { workspace = true }
+dirs = { workspace = true }
+monexo-core = { version = "0.1.0", path = "../monexo-core" }
+thiserror = { workspace = true }
+secp256k1 = { version = "0.29.0", default-features = false, features = ["serde"] }
+bip32 = { workspace = true, features = ["secp256k1", "std"] }
+bip39 = { workspace = true }
+serde_json = { workspace = true }
+serde = { workspace = true }
+url = { workspace = true }
+rand = { workspace = true }
+hex = { workspace = true }
+
+[target.'cfg(not(target_family="wasm"))'.dependencies]
+reqwest = { workspace = true, features = ["json", "rustls-tls"], default-features = false }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros"] }
+sqlx = { workspace = true, default-features = false, features = ["sqlite", "runtime-tokio", "tls-rustls", "migrate", "macros", "json"] }
+
+[dev-dependencies]
+mockall = { workspace = true }

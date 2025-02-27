@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, keyset_id, active, last_index, public_keys FROM keysets;",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "keyset_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "active",
+        "ordinal": 2,
+        "type_info": "Bool"
+      },
+      {
+        "name": "last_index",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "public_keys",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3500214ecc9f37719ce47bf3412855e60e14b17464a739e620e3d51527bc2556"
+}
