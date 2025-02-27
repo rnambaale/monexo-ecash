@@ -1,0 +1,52 @@
+[package]
+name = "monexo-mint"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "monexo-mint"
+path = "src/bin/monexo-mint.rs"
+
+[lib]
+name = "monexomint"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow = { workspace = true, features = ["backtrace"] }
+async-trait = { workspace = true }
+axum = { workspace = true, features = ["http2"] }
+clap = { workspace = true, features = ["env", "derive"] }
+chrono = { workspace = true }
+dotenvy = { workspace = true }
+hex = { workspace = true }
+hyper = { workspace = true }
+monexo-core = { path = "../monexo-core", version = "0.1.0" }
+utoipa = { workspace = true, features = ["axum_extras"] }
+utoipa-swagger-ui = { workspace = true, features = ["axum"] }
+uuid = { workspace = true, features = ["serde", "v4"] }
+sqlx = { workspace = true, features = ["postgres", "runtime-tokio", "tls-rustls", "migrate", "macros", "uuid"] }
+tokio = { workspace = true, features = ["full"] }
+tower-http = { workspace = true, features = ["cors", "fs", "set-header"] }
+thiserror = { workspace = true }
+reqwest = { workspace = true, features = ["json", "rustls-tls"], default-features = false }
+solana-sdk = { workspace = true }
+solana-client = { workspace = true }
+solana-transaction-status-client-types = { workspace = true }
+spl-associated-token-account = { workspace = true }
+spl-token = { workspace = true }
+solana-transaction-status = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
+tracing-opentelemetry = { workspace = true }
+opentelemetry_sdk = { workspace = true, features = ["rt-tokio"] }
+opentelemetry = { workspace = true }
+opentelemetry-otlp = { workspace = true, features = ["http-proto", "reqwest-client"] }
+
+[dev-dependencies]
+testcontainers = { workspace = true }
+testcontainers-modules = { workspace = true, features = ["postgres"] }
+pretty_assertions = { workspace = true }
+tower = { workspace = true, features = ["util"] }
