@@ -119,7 +119,7 @@ async fn main() -> anyhow::Result<()> {
                     \n you will receive tokens worth {} micro usd", (amount - fee)
                 ))?;
 
-                let amount_usd = (amount / 1_000_000) as f64;
+                let amount_usd = amount as f64 / 1_000_000 as f64;
                 let address_string = mint_info.usdc_address;
                 let token_mint = mint_info.usdc_token_mint;
                 let bip21_code = format!("solana:{}?amount={}&spl-token={}&reference={}&label=Monexo&message=Thank%20you!", address_string, amount_usd, token_mint, reference);
