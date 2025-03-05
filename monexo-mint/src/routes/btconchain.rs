@@ -110,18 +110,25 @@ pub async fn get_mint_quote_btconchain(
 
     // Extract and parse transaction logs
     // let usdc_mint_address = Pubkey::from_str("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU").unwrap();
-    let monexo_wallet_keypair = Keypair::read_from_file(
-        mint.config.derivation_path.unwrap()
-    ).expect("Failed to load keypair");
 
-    let monexo_wallet_pub_key = monexo_wallet_keypair
-        .try_pubkey()
-        .expect("Failed to load mint pubkey");
-    let verified = is_paid_onchain(quote.amount, &quote.reference, &monexo_wallet_pub_key.to_string()).await;
+    let state = match quote.state {
+        MintBtcOnchainState::Issued => quote.state,
+        _ => {
+            let monexo_wallet_keypair = Keypair::read_from_file(
+                mint.config.derivation_path.unwrap()
+            ).expect("Failed to load keypair");
 
-    let state = match verified {
-        false => MintBtcOnchainState::Unpaid,
-        true => MintBtcOnchainState::Paid,
+            let monexo_wallet_pub_key = monexo_wallet_keypair
+                .try_pubkey()
+                .expect("Failed to load mint pubkey");
+
+            let verified = is_paid_onchain(quote.amount, &quote.reference, &monexo_wallet_pub_key.to_string()).await;
+
+            match verified {
+                false => MintBtcOnchainState::Unpaid,
+                true => MintBtcOnchainState::Paid,
+            }
+        }
     };
 
     Ok(Json(BtcOnchainMintQuote { state, ..quote }.into()))
