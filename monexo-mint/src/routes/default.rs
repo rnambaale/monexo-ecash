@@ -63,6 +63,24 @@ pub async fn get_info(State(mint): State<Mint>) -> Result<Json<MintInfoResponse>
 
 #[utoipa::path(
     get,
+    path = "/v1/keys",
+    responses(
+        (status = 200, description = "get keys", body = [KeysResponse])
+    )
+)]
+#[instrument(skip(mint), err)]
+pub async fn get_keys(State(mint): State<Mint>) -> Result<Json<KeysResponse>, MonexoMintError> {
+    Ok(Json(KeysResponse {
+        keysets: vec![KeyResponse {
+            id: mint.keyset.keyset_id.clone(),
+            unit: CurrencyUnit::Usd,
+            keys: mint.keyset.public_keys,
+        }],
+    }))
+}
+
+#[utoipa::path(
+    get,
     path = "/v1/keysets",
     responses(
         (status = 200, description = "get keysets", body = [Keysets])

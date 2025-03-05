@@ -14,7 +14,7 @@ use tower_http::cors::{Any, CorsLayer};
 use utoipa_swagger_ui::SwaggerUi;
 use utoipa::OpenApi;
 
-use crate::routes::default::{post_swap, get_info, get_keysets, get_keys_by_id};
+use crate::routes::default::{post_swap, get_info, get_keysets, get_keys, get_keys_by_id};
 use crate::routes::btconchain::{get_mint_quote_btconchain, post_mint_btconchain, post_mint_quote_btconchain, post_melt_quote_btconchain, get_melt_quote_btconchain, post_melt_btconchain};
 
 pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
@@ -96,7 +96,7 @@ struct ApiDoc;
 fn app(mint: Mint) -> Router {
     let default_routes = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
-        // .route("/v1/keys", get(get_keys))
+        .route("/v1/keys", get(get_keys))
         .route("/v1/keys/:id", get(get_keys_by_id))
         .route("/v1/keysets", get(get_keysets))
         // .route("/v1/mint/quote/bolt11", post(post_mint_quote_bolt11))
