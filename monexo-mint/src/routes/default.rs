@@ -1,10 +1,10 @@
-use std::str::FromStr;
+use std::{collections::HashSet, str::FromStr};
 
 use axum::{extract::{Path, State}, Json};
-use monexo_core::{keyset::Keysets, primitives::{CurrencyUnit, KeyResponse, KeysResponse, MintInfoResponse, PostSwapRequest, PostSwapResponse}};
+use monexo_core::{keyset::Keysets, primitives::{CurrencyUnit, KeyResponse, KeysResponse, MintInfoResponse, PostCheckStateRequest, PostCheckStateResponse, PostSwapRequest, PostSwapResponse, ProofState, ProofStatus}};
 use solana_sdk::{pubkey::Pubkey, signature::Keypair, signer::{EncodableKey, Signer}};
 
-use crate::{error::MonexoMintError, mint::Mint};
+use crate::{database::Database, error::MonexoMintError, mint::Mint};
 
 use tracing::instrument;
 
@@ -111,6 +111,56 @@ pub async fn get_keys_by_id(
             keys: mint.keyset.public_keys,
         }],
     }))
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/checkstate",
+    request_body = PostCheckStateRequest,
+    responses(
+        (status = 200, description = "post check state", body = [PostCheckStateResponse])
+    ),
+)]
+#[instrument(name = "post_swap", skip(mint), err)]
+pub async fn post_check_state(
+    State(mint): State<Mint>,
+    Json(chek_state_request): Json<PostCheckStateRequest>,
+) -> Result<Json<PostCheckStateResponse>, MonexoMintError> {
+    let mut tx = mint.db.begin_tx().await?;
+    let spent_proofs = &mint
+        .db
+        .get_used_proofs(&mut tx)
+        .await?
+        .proofs();
+
+    let used_secrets: HashSet<String> = spent_proofs
+        .iter()
+        .map(|proof| {
+            proof
+                .y()
+                .expect("Failed to determine `y` values for spent proof")
+                .to_string()
+        })
+        .collect();
+
+    let states: Vec<ProofStatus> = chek_state_request.ys
+        .iter()
+        .map(|secret| {
+            let state = if used_secrets.contains(secret) {
+                ProofState::Spent
+            } else {
+                ProofState::Unspent
+            };
+
+            ProofStatus {
+                y: secret.clone(),
+                state,
+                witness: None
+            }
+        })
+        .collect();
+
+    Ok(Json(PostCheckStateResponse { states }))
 }
 
 // Usage

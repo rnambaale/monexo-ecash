@@ -246,6 +246,56 @@ pub struct MintInfoResponse {
     pub usdc_token_mint: String,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct PostCheckStateRequest {
+    #[serde(rename = "Ys")]
+    pub ys: Vec<String>
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, ToSchema)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum ProofState {
+    Unspent,
+    Pending,
+    Spent,
+}
+
+impl Display for ProofState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ProofState::Unspent => write!(f, "UNSPENT"),
+            ProofState::Pending => write!(f, "PENDING"),
+            ProofState::Spent => write!(f, "SPENT"),
+        }
+    }
+}
+
+impl FromStr for ProofState {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "UNSPENT" => Ok(ProofState::Unspent),
+            "PENDING" => Ok(ProofState::Pending),
+            "SPENT" => Ok(ProofState::Spent),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct ProofStatus {
+    #[serde(rename = "Y")]
+    pub y: String,
+    pub state: ProofState,
+    pub witness: Option<String>
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub struct PostCheckStateResponse {
+    pub states: Vec<ProofStatus>,
+}
+
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;

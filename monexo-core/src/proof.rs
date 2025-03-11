@@ -14,6 +14,7 @@ use secp256k1::PublicKey;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use utoipa::ToSchema;
+use crate::dhke::Dhke;
 
 use crate::{error::MonexoCoreError, keyset::KeysetId};
 
@@ -39,6 +40,13 @@ impl Proof {
             keyset_id: id,
             script: None,
         }
+    }
+
+    /// Get y from proof
+    ///
+    /// Where y is `hash_to_curve(secret)`
+    pub fn y(&self) -> Result<PublicKey, MonexoCoreError> {
+        Ok(Dhke::hash_to_curve(self.secret.as_bytes())?)
     }
 }
 

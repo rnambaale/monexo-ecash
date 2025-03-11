@@ -339,7 +339,7 @@ pub async fn post_melt_btconchain(
 
 #[allow(dead_code)]
 fn quote_onchain_expiry() -> u64 {
-    let now = Utc::now() + Duration::try_minutes(5).expect("invalid duration");
+    let now = Utc::now() + Duration::try_minutes(30).expect("invalid duration");
     now.timestamp() as u64
 }
 
