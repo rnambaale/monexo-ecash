@@ -1,16 +1,32 @@
 use std::collections::HashSet;
 
-use monexo_core::{blind::{BlindedMessage, BlindedSignature, TotalAmount}, dhke::Dhke, keyset::MintKeyset, primitives::BtcOnchainMeltQuote, proof::Proofs};
-use solana_sdk::{pubkey::Pubkey, signature::Keypair, signer::{EncodableKey, Signer}};
+use crate::{
+    config::{
+        BtcOnchainConfig, BuildParams, DatabaseConfig, MintConfig, MintInfoConfig, ServerConfig,
+        TracingConfig,
+    },
+    database::{postgres::PostgresDB, Database},
+    error::MonexoMintError,
+};
+use monexo_core::{
+    blind::{BlindedMessage, BlindedSignature, TotalAmount},
+    dhke::Dhke,
+    keyset::MintKeyset,
+    primitives::BtcOnchainMeltQuote,
+    proof::Proofs,
+};
 use solana_client::nonblocking::rpc_client::RpcClient;
+use solana_sdk::instruction::Instruction;
+use solana_sdk::signature::Signature;
+use solana_sdk::{
+    pubkey::Pubkey,
+    signature::Keypair,
+    signer::{EncodableKey, Signer},
+};
 use spl_token::instruction::transfer_checked;
 use sqlx::Transaction;
 use std::str::FromStr;
-use solana_sdk::signature::Signature;
-use solana_sdk::instruction::Instruction;
-use crate::{config::{BtcOnchainConfig, BuildParams, DatabaseConfig, MintConfig, MintInfoConfig, ServerConfig, TracingConfig}, database::{postgres::PostgresDB, Database}, error::MonexoMintError};
 use tracing::instrument;
-
 
 #[derive(Clone)]
 pub struct Mint<DB: Database = PostgresDB> {
@@ -121,11 +137,8 @@ where
         //     .await?;
 
         let amount_to_send = quote.amount - quote.fee_total;
-        let send_response = Self::send_coins(
-            &quote.address,
-            &quote.reference,
-            amount_to_send
-        ).await?;
+        let send_response =
+            Self::send_coins(&quote.address, &quote.reference, amount_to_send).await?;
 
         self.db.add_used_proofs(&mut tx, proofs).await?;
         tx.commit().await?;
@@ -170,19 +183,22 @@ where
     async fn send_coins(
         recipient: &str,
         reference: &str,
-        amount: u64
+        amount: u64,
     ) -> Result<Signature, MonexoMintError> {
         let rpc_url = "https://api.devnet.solana.com";
         let client = RpcClient::new(rpc_url.to_string());
 
-        let sender_keypair = Keypair::read_from_file("./../wallet.json").expect("Failed to load keypair");
+        let sender_keypair =
+            Keypair::read_from_file("./../wallet.json").expect("Failed to load keypair");
 
         // Step 3: Define USDC Mint Address on Devnet
         let usdc_mint = Pubkey::from_str("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU").unwrap();
 
         // Step 4: Compute Source ATA (must be owned by the sender)
         let source_ata = spl_associated_token_account::get_associated_token_address(
-            &sender_keypair.try_pubkey().expect("Failed to load mint pubkey"),
+            &sender_keypair
+                .try_pubkey()
+                .expect("Failed to load mint pubkey"),
             &usdc_mint,
         );
 
@@ -199,32 +215,35 @@ where
 
         if recipient_ata_info.is_err() {
             // If recipient ATA does not exist, create it
-            let create_ata_ix = spl_associated_token_account::instruction::create_associated_token_account(
-                &sender_keypair.pubkey(), // Payer
-                &recipient_pubkey,         // Wallet owner
-                &usdc_mint,            // Token mint
-                &spl_token::id()
-            );
+            let create_ata_ix =
+                spl_associated_token_account::instruction::create_associated_token_account(
+                    &sender_keypair.pubkey(), // Payer
+                    &recipient_pubkey,        // Wallet owner
+                    &usdc_mint,               // Token mint
+                    &spl_token::id(),
+                );
             instructions.push(create_ata_ix);
         }
 
         // Step 7: Transfer USDC (with decimals checked)
         let transfer_ix = transfer_checked(
-            &spl_token::id(), // SPL Token Program ID
-            &source_ata, // Source ATA
-            &usdc_mint, // Token Mint Address
-            &recipient_ata, // Destination ATA
-            &sender_keypair.pubkey(), // Authority (signer)
+            &spl_token::id(),            // SPL Token Program ID
+            &source_ata,                 // Source ATA
+            &usdc_mint,                  // Token Mint Address
+            &recipient_ata,              // Destination ATA
+            &sender_keypair.pubkey(),    // Authority (signer)
             &[&sender_keypair.pubkey()], // Signer list
             amount, //This is already a micro-usd Amount (1 USDC = 1_000_000 because of 6 decimal places)
-            6, // USDC has 6 decimals
+            6,      // USDC has 6 decimals
         )?;
 
         // Add reference key to the transaction
         let mut accounts = transfer_ix.accounts;
         let reference = Pubkey::from_str(&reference).expect("reference is not a valid public key");
 
-        accounts.push(solana_sdk::instruction::AccountMeta::new_readonly(reference, false));
+        accounts.push(solana_sdk::instruction::AccountMeta::new_readonly(
+            reference, false,
+        ));
 
         let transfer_ix = Instruction {
             program_id: transfer_ix.program_id,
@@ -336,12 +355,14 @@ mod tests {
     use monexo_core::fixture::read_fixture_as;
     use monexo_core::primitives::PostSwapRequest;
     use monexo_core::proof::Proofs;
-    use testcontainers_modules::postgres::Postgres;
     use testcontainers::runners::AsyncRunner;
     use testcontainers::{ContainerAsync, ImageExt};
+    use testcontainers_modules::postgres::Postgres;
 
     use crate::{
-        config::{DatabaseConfig, MintConfig}, database::postgres::PostgresDB, mint::Mint
+        config::{DatabaseConfig, MintConfig},
+        database::postgres::PostgresDB,
+        mint::Mint,
     };
 
     async fn create_postgres_image() -> anyhow::Result<ContainerAsync<Postgres>> {
@@ -364,10 +385,7 @@ mod tests {
         Ok(db)
     }
 
-    async fn create_mint_from_mocks(
-        mock_db: PostgresDB,
-    ) -> anyhow::Result<Mint> {
-
+    async fn create_mint_from_mocks(mock_db: PostgresDB) -> anyhow::Result<Mint> {
         Ok(Mint::new(
             mock_db,
             MintConfig {

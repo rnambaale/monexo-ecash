@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use monexo_core::{keyset::KeysetId, proof::{Proof, Proofs}};
+use monexo_core::{
+    keyset::KeysetId,
+    proof::{Proof, Proofs},
+};
 use secp256k1::PublicKey;
 use sqlx::sqlite::SqliteError;
 
@@ -93,9 +96,10 @@ impl LocalStore for SqliteLocalStore {
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
     ) -> Result<Vec<WalletKeyset>, MonexoWalletError> {
-        let rows = sqlx::query!("SELECT id, keyset_id, active, last_index, public_keys FROM keysets;")
-            .fetch_all(&mut **tx)
-            .await?;
+        let rows =
+            sqlx::query!("SELECT id, keyset_id, active, last_index, public_keys FROM keysets;")
+                .fetch_all(&mut **tx)
+                .await?;
 
         Ok(rows
             .iter()

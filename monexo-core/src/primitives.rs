@@ -9,7 +9,10 @@ use serde_with::skip_serializing_none;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::{blind::{BlindedMessage, BlindedSignature}, proof::Proofs};
+use crate::{
+    blind::{BlindedMessage, BlindedSignature},
+    proof::Proofs,
+};
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, ToSchema, Hash)]
 #[serde(rename_all = "lowercase")]
@@ -186,7 +189,6 @@ pub struct BtcOnchainMeltQuote {
     pub description: Option<String>,
 }
 
-
 #[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
 pub struct PostMeltBtcOnchainRequest {
     pub quote: String,
@@ -249,7 +251,7 @@ pub struct MintInfoResponse {
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct PostCheckStateRequest {
     #[serde(rename = "Ys")]
-    pub ys: Vec<String>
+    pub ys: Vec<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, ToSchema)]
@@ -288,7 +290,7 @@ pub struct ProofStatus {
     #[serde(rename = "Y")]
     pub y: String,
     pub state: ProofState,
-    pub witness: Option<String>
+    pub witness: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
@@ -327,8 +329,12 @@ mod tests {
         let mint_info = MintInfoResponse {
             name: Some("Bob's Cashu mint".to_string()),
             version: Some("Nutshell/0.11.0".to_string()),
-            usdc_address: String::from("02a9acc1e48c25eeeb9289b5031cc57da9fe72f3fe2861d264bdc074209b107ba2"),
-            usdc_token_mint: String::from("02a9acc1e48c25eeeb9289b5031cc57da9fe72f3fe2861d264bdc074209b107ba1"),
+            usdc_address: String::from(
+                "02a9acc1e48c25eeeb9289b5031cc57da9fe72f3fe2861d264bdc074209b107ba2",
+            ),
+            usdc_token_mint: String::from(
+                "02a9acc1e48c25eeeb9289b5031cc57da9fe72f3fe2861d264bdc074209b107ba1",
+            ),
         };
         let out = serde_json::to_string_pretty(&mint_info)?;
         assert!(!out.is_empty());

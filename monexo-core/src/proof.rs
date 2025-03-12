@@ -10,11 +10,11 @@
 //!
 //! Both the `Proof` and `Proofs` structs are serializable and deserializable using serde.
 
+use crate::dhke::Dhke;
 use secp256k1::PublicKey;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use utoipa::ToSchema;
-use crate::dhke::Dhke;
 
 use crate::{error::MonexoCoreError, keyset::KeysetId};
 
@@ -190,4 +190,3 @@ mod tests {
         Ok(())
     }
 }
-

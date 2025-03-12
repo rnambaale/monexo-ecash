@@ -4,7 +4,16 @@ use async_trait::async_trait;
 
 #[cfg(test)]
 use mockall::automock;
-use monexo_core::{blind::BlindedMessage, keyset::Keysets, primitives::{KeysResponse, MintInfoResponse, PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainResponse, PostMintBtcOnchainResponse, PostMintQuoteBtcOnchainResponse, PostSwapResponse}, proof::Proofs};
+use monexo_core::{
+    blind::BlindedMessage,
+    keyset::Keysets,
+    primitives::{
+        KeysResponse, MintInfoResponse, PostMeltBtcOnchainResponse,
+        PostMeltQuoteBtcOnchainResponse, PostMintBtcOnchainResponse,
+        PostMintQuoteBtcOnchainResponse, PostSwapResponse,
+    },
+    proof::Proofs,
+};
 use url::Url;
 
 use crate::error::MonexoWalletError;

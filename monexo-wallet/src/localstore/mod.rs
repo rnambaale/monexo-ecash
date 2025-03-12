@@ -23,8 +23,7 @@ pub struct WalletKeyset {
 
 impl WalletKeysetFilter for Vec<WalletKeyset> {
     fn get_active(&self) -> Option<&WalletKeyset> {
-        self.iter()
-            .find(|k| k.active)
+        self.iter().find(|k| k.active)
     }
 }
 
@@ -103,8 +102,8 @@ pub trait LocalStore {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use rand::thread_rng;
+    use std::collections::HashMap;
 
     use secp256k1::PublicKey;
 

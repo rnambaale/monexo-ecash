@@ -1,5 +1,15 @@
 use async_trait::async_trait;
-use monexo_core::{blind::BlindedMessage, keyset::Keysets, primitives::{KeysResponse, MintInfoResponse, PostMeltBtcOnchainRequest, PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainRequest, PostMeltQuoteBtcOnchainResponse, PostMintBtcOnchainRequest, PostMintBtcOnchainResponse, PostMintQuoteBtcOnchainRequest, PostMintQuoteBtcOnchainResponse, PostSwapRequest, PostSwapResponse}, proof::Proofs};
+use monexo_core::{
+    blind::BlindedMessage,
+    keyset::Keysets,
+    primitives::{
+        KeysResponse, MintInfoResponse, PostMeltBtcOnchainRequest, PostMeltBtcOnchainResponse,
+        PostMeltQuoteBtcOnchainRequest, PostMeltQuoteBtcOnchainResponse, PostMintBtcOnchainRequest,
+        PostMintBtcOnchainResponse, PostMintQuoteBtcOnchainRequest,
+        PostMintQuoteBtcOnchainResponse, PostSwapRequest, PostSwapResponse,
+    },
+    proof::Proofs,
+};
 
 use crate::{error::MonexoWalletError, http::CrossPlatformHttpClient};
 
@@ -86,10 +96,7 @@ impl CashuClient for CrossPlatformHttpClient {
         address: String,
         amount: u64,
     ) -> Result<Vec<PostMeltQuoteBtcOnchainResponse>, MonexoWalletError> {
-        let body = PostMeltQuoteBtcOnchainRequest {
-            address,
-            amount,
-        };
+        let body = PostMeltQuoteBtcOnchainRequest { address, amount };
         self.do_post(&mint_url.join("v1/melt/quote/btconchain")?, &body)
             .await
     }

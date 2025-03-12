@@ -1,4 +1,7 @@
-use reqwest::{header::{HeaderValue, CONTENT_TYPE}, Response, StatusCode};
+use reqwest::{
+    header::{HeaderValue, CONTENT_TYPE},
+    Response, StatusCode,
+};
 use serde_json::Value;
 use url::Url;
 

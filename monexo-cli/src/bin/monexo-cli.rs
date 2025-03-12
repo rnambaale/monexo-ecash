@@ -1,12 +1,17 @@
 use clap::{Parser, Subcommand};
 use console::{style, Term};
 use dialoguer::Confirm;
-use monexo_core::{primitives::{MeltBtcOnchainState, PostMeltBtcOnchainResponse, PostMintQuoteBtcOnchainResponse}, token::TokenV3};
+use monexo_core::{
+    primitives::{
+        MeltBtcOnchainState, PostMeltBtcOnchainResponse, PostMintQuoteBtcOnchainResponse,
+    },
+    token::TokenV3,
+};
 use monexo_wallet::{http::CrossPlatformHttpClient, localstore::WalletKeysetFilter};
+use monexocli::cli::{self, choose_mint, get_mints_with_balance};
 use num_format::{Locale, ToFormattedString};
 use qrcode::{render::unicode, QrCode};
 use url::Url;
-use monexocli::cli::{self, choose_mint, get_mints_with_balance};
 
 use std::{path::PathBuf, str::FromStr};
 
@@ -109,14 +114,19 @@ async fn main() -> anyhow::Result<()> {
                     return Ok(());
                 }
 
-                let PostMintQuoteBtcOnchainResponse { reference, quote, fee, .. } =
-                    wallet.create_quote_onchain(&mint_url, amount).await?;
+                let PostMintQuoteBtcOnchainResponse {
+                    reference,
+                    quote,
+                    fee,
+                    ..
+                } = wallet.create_quote_onchain(&mint_url, amount).await?;
 
                 term.write_line(&format!(
                     "Pay onchain to mint tokens,
                     \n amount: {amount}
                     \n fee: {fee}
-                    \n you will receive tokens worth {} micro usd", (amount - fee)
+                    \n you will receive tokens worth {} micro usd",
+                    (amount - fee)
                 ))?;
 
                 let amount_usd = amount as f64 / 1_000_000 as f64;
@@ -132,9 +142,7 @@ async fn main() -> anyhow::Result<()> {
             };
 
             let wallet_keysets = wallet.get_wallet_keysets().await?;
-            let wallet_keyset = wallet_keysets
-                .get_active()
-                .expect("Keyset not found");
+            let wallet_keyset = wallet_keysets.get_active().expect("Keyset not found");
 
             let progress_bar = cli::progress_bar()?;
             progress_bar.set_message("Waiting for payment ...");
@@ -145,10 +153,7 @@ async fn main() -> anyhow::Result<()> {
                 )
                 .await;
 
-                if !wallet
-                    .is_quote_paid(&mint_url, quote.clone())
-                    .await?
-                {
+                if !wallet.is_quote_paid(&mint_url, quote.clone()).await? {
                     continue;
                 }
 
@@ -206,9 +211,7 @@ async fn main() -> anyhow::Result<()> {
             }
 
             let wallet_keysets = wallet.get_wallet_keysets().await?;
-            let wallet_keyset = wallet_keysets
-                .get_active()
-                .expect("no active keyset found");
+            let wallet_keyset = wallet_keysets.get_active().expect("no active keyset found");
 
             term.write_line(&format!("Sending tokens from mint"))?;
             let result = wallet.send_tokens(&mint_url, wallet_keyset, amount).await?;
@@ -220,11 +223,11 @@ async fn main() -> anyhow::Result<()> {
         Command::Receive { token } => {
             let token: TokenV3 = TokenV3::from_str(&token)?;
             let wallet_keysets = wallet.get_wallet_keysets().await?;
-            let wallet_keyset = wallet_keysets
-                .get_active()
-                .expect("no active keyset found");
+            let wallet_keyset = wallet_keysets.get_active().expect("no active keyset found");
 
-            wallet.receive_tokens(&mint_url, wallet_keyset, &token).await?;
+            wallet
+                .receive_tokens(&mint_url, wallet_keyset, &token)
+                .await?;
             cli::show_total_balance(&wallet).await?;
         }
         Command::PayOnchain { address, amount } => {
@@ -255,9 +258,7 @@ async fn main() -> anyhow::Result<()> {
             }
 
             let wallet_keysets = wallet.get_wallet_keysets().await?;
-            let wallet_keyset = wallet_keysets
-                .get_active()
-                .expect("no active keyset found");
+            let wallet_keyset = wallet_keysets.get_active().expect("no active keyset found");
 
             let quotes = wallet
                 .get_melt_quote_btconchain(&mint_url, address.clone(), amount)

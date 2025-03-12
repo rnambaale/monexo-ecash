@@ -1,19 +1,31 @@
-use std::str::FromStr;
-use solana_client::{nonblocking::rpc_client::RpcClient, rpc_client::GetConfirmedSignaturesForAddress2Config};
+use solana_client::{
+    nonblocking::rpc_client::RpcClient, rpc_client::GetConfirmedSignaturesForAddress2Config,
+};
+use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::pubkey::Pubkey;
+use solana_sdk::signature::Signature;
 use solana_sdk::signer::EncodableKey;
 use solana_sdk::{signature::Keypair, signer::Signer};
-use solana_sdk::commitment_config::CommitmentConfig;
-use solana_sdk::signature::Signature;
+use std::str::FromStr;
 
-use axum::{extract::{Path, State}, Json};
-use monexo_core::primitives::{BtcOnchainMeltQuote, BtcOnchainMintQuote, MeltBtcOnchainState, MintBtcOnchainState, PostMeltBtcOnchainRequest, PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainRequest, PostMeltQuoteBtcOnchainResponse, PostMintBtcOnchainRequest, PostMintBtcOnchainResponse, PostMintQuoteBtcOnchainRequest, PostMintQuoteBtcOnchainResponse};
+use axum::{
+    extract::{Path, State},
+    Json,
+};
+use chrono::{Duration, Utc};
+use monexo_core::primitives::{
+    BtcOnchainMeltQuote, BtcOnchainMintQuote, MeltBtcOnchainState, MintBtcOnchainState,
+    PostMeltBtcOnchainRequest, PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainRequest,
+    PostMeltQuoteBtcOnchainResponse, PostMintBtcOnchainRequest, PostMintBtcOnchainResponse,
+    PostMintQuoteBtcOnchainRequest, PostMintQuoteBtcOnchainResponse,
+};
 use solana_transaction_status::UiTransactionTokenBalance;
 use solana_transaction_status_client_types::option_serializer::OptionSerializer;
+use solana_transaction_status_client_types::{
+    UiInstruction, UiMessage, UiParsedInstruction, UiTransactionEncoding,
+};
 use tracing::{info, instrument};
 use uuid::Uuid;
-use chrono::{Duration, Utc};
-use solana_transaction_status_client_types::{UiTransactionEncoding, UiMessage, UiInstruction, UiParsedInstruction};
 
 use crate::{database::Database, error::MonexoMintError, mint::Mint};
 
@@ -114,15 +126,20 @@ pub async fn get_mint_quote_btconchain(
     let state = match quote.state {
         MintBtcOnchainState::Issued => quote.state,
         _ => {
-            let monexo_wallet_keypair = Keypair::read_from_file(
-                mint.config.derivation_path.unwrap()
-            ).expect("Failed to load keypair");
+            let monexo_wallet_keypair =
+                Keypair::read_from_file(mint.config.derivation_path.unwrap())
+                    .expect("Failed to load keypair");
 
             let monexo_wallet_pub_key = monexo_wallet_keypair
                 .try_pubkey()
                 .expect("Failed to load mint pubkey");
 
-            let verified = is_paid_onchain(quote.amount, &quote.reference, &monexo_wallet_pub_key.to_string()).await;
+            let verified = is_paid_onchain(
+                quote.amount,
+                &quote.reference,
+                &monexo_wallet_pub_key.to_string(),
+            )
+            .await;
 
             match verified {
                 false => MintBtcOnchainState::Unpaid,
@@ -191,10 +208,7 @@ pub async fn post_melt_quote_btconchain(
     State(mint): State<Mint>,
     Json(melt_request): Json<PostMeltQuoteBtcOnchainRequest>,
 ) -> Result<Json<Vec<PostMeltQuoteBtcOnchainResponse>>, MonexoMintError> {
-    let PostMeltQuoteBtcOnchainRequest {
-        address,
-        amount,
-    } = melt_request;
+    let PostMeltQuoteBtcOnchainRequest { address, amount } = melt_request;
 
     let onchain_config = mint.config.btconchain_backend.unwrap_or_default();
 
@@ -343,7 +357,11 @@ fn quote_onchain_expiry() -> u64 {
     now.timestamp() as u64
 }
 
-async fn is_paid_onchain(amount: u64, transaction_reference: &str, destination_wallet_pub_key: &str) -> bool {
+async fn is_paid_onchain(
+    amount: u64,
+    transaction_reference: &str,
+    destination_wallet_pub_key: &str,
+) -> bool {
     // Expected values:
     // let usdc_spl_mint = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
     // let transaction_reference = "5t6gQ7Mnr3mmsFYquFGwgEKokq9wrrUgCpwWab93LmLL";
@@ -357,25 +375,26 @@ async fn is_paid_onchain(amount: u64, transaction_reference: &str, destination_w
         ..GetConfirmedSignaturesForAddress2Config::default()
     };
 
-    let reference = Pubkey::from_str(&transaction_reference).expect("reference is not a valid public key");
+    let reference =
+        Pubkey::from_str(&transaction_reference).expect("reference is not a valid public key");
     let signatures = client
-        .get_signatures_for_address_with_config(&reference, config).await
+        .get_signatures_for_address_with_config(&reference, config)
+        .await
         .expect("onchain backend not configured");
 
     let first_signature = match signatures.first() {
-        Some(sig) =>
-            Signature::from_str(&sig.signature).expect("could not parse transaction signature"),
+        Some(sig) => {
+            Signature::from_str(&sig.signature).expect("could not parse transaction signature")
+        }
         None => {
             eprintln!("No transaction signatures found");
             return false;
         }
     };
 
-    let tx
-        = match client.get_transaction(
-            &first_signature,
-            UiTransactionEncoding::JsonParsed
-        ).await
+    let tx = match client
+        .get_transaction(&first_signature, UiTransactionEncoding::JsonParsed)
+        .await
     {
         Ok(tx) => tx,
         _ => {
@@ -398,13 +417,13 @@ async fn is_paid_onchain(amount: u64, transaction_reference: &str, destination_w
     let pre_ata_token_balance = get_mint_token_balance(
         &meta.pre_token_balances,
         &usdc_spl_mint,
-        destination_wallet_pub_key
+        destination_wallet_pub_key,
     );
 
     let post_ata_token_balance = get_mint_token_balance(
         &meta.post_token_balances,
         usdc_spl_mint,
-        destination_wallet_pub_key
+        destination_wallet_pub_key,
     );
 
     let mint_balance_change = post_ata_token_balance - pre_ata_token_balance;
@@ -441,7 +460,8 @@ async fn is_paid_onchain(amount: u64, transaction_reference: &str, destination_w
             // We're looking for a transferChecked instruction from the spl-token program.
             if let UiParsedInstruction::Parsed(parsed_inst) = parsed_inst_1 {
                 if parsed_inst.program == "spl-token"
-                    && parsed_inst.parsed.get("type").and_then(|t| t.as_str()) == Some("transferChecked")
+                    && parsed_inst.parsed.get("type").and_then(|t| t.as_str())
+                        == Some("transferChecked")
                 {
                     if let Some(info) = parsed_inst.parsed.get("info").and_then(|v| v.as_object()) {
                         // Check that the mint is correct.
@@ -452,7 +472,9 @@ async fn is_paid_onchain(amount: u64, transaction_reference: &str, destination_w
 
                         // Check for the reference in the signers array.
                         if let Some(signers) = info.get("signers").and_then(|v| v.as_array()) {
-                            let reference_found = signers.iter().any(|s| s.as_str() == Some(transaction_reference));
+                            let reference_found = signers
+                                .iter()
+                                .any(|s| s.as_str() == Some(transaction_reference));
                             if !reference_found {
                                 continue;
                             }
@@ -462,7 +484,9 @@ async fn is_paid_onchain(amount: u64, transaction_reference: &str, destination_w
 
                         // Check that the transferred amount is 10 USDC.
                         if let Some(token_amount) = info.get("tokenAmount") {
-                            if token_amount.get("amount").and_then(|s| s.as_str()) == Some(amount.to_string().as_str()) {
+                            if token_amount.get("amount").and_then(|s| s.as_str())
+                                == Some(amount.to_string().as_str())
+                            {
                                 transfer_verified = true;
                                 break;
                             }
@@ -489,7 +513,7 @@ async fn is_paid_onchain(amount: u64, transaction_reference: &str, destination_w
 fn get_mint_token_balance(
     token_balances: &OptionSerializer<Vec<UiTransactionTokenBalance>>,
     token_address: &str,
-    wallet_pub_key: &str
+    wallet_pub_key: &str,
 ) -> u64 {
     let token_balances = match token_balances {
         OptionSerializer::Some(balances) => balances,
@@ -499,10 +523,10 @@ fn get_mint_token_balance(
         }
     };
 
-    let ata_token_balance = match token_balances.iter().find(|token_balance|
+    let ata_token_balance = match token_balances.iter().find(|token_balance| {
         token_balance.mint == token_address.to_string()
-        && token_balance.owner == OptionSerializer::Some(wallet_pub_key.to_string())
-    ) {
+            && token_balance.owner == OptionSerializer::Some(wallet_pub_key.to_string())
+    }) {
         Some(token_balance) => token_balance.ui_token_amount.amount.as_str(),
         _ => {
             return 0;
@@ -516,7 +540,7 @@ fn get_mint_token_balance(
 async fn get_estimated_fees(
     amount: u64,
     source_address: &str,
-    destination_address: &str
+    destination_address: &str,
 ) -> Result<f64, MonexoMintError> {
     let rpc_url = "https://api.devnet.solana.com";
     let client = RpcClient::new(rpc_url.to_string());
@@ -531,21 +555,25 @@ async fn get_estimated_fees(
         .expect("reference is not a valid public key"); // USDC Mint on Devnet
 
     // Get ATA (Associated Token Account) addresses
-    let source_ata = spl_associated_token_account::get_associated_token_address(&source_address, &usdc_mint);
-    let destination_ata = spl_associated_token_account::get_associated_token_address(&destination_address, &usdc_mint);
+    let source_ata =
+        spl_associated_token_account::get_associated_token_address(&source_address, &usdc_mint);
+    let destination_ata = spl_associated_token_account::get_associated_token_address(
+        &destination_address,
+        &usdc_mint,
+    );
 
     // Amount and decimals
     // let amount = amount * 1_000_000; // 1 USDC (6 decimal places)
 
     // Create `transfer_checked` instruction
     let transfer_ix = spl_token::instruction::transfer_checked(
-        &spl_token::ID, // Token program ID
-        &source_ata,    // Sender ATA
-        &usdc_mint,     // USDC Mint
+        &spl_token::ID,   // Token program ID
+        &source_ata,      // Sender ATA
+        &usdc_mint,       // USDC Mint
         &destination_ata, // Recipient ATA
-        &source_address,        // Owner of sender ATA
-        &[],            // No additional signers
-        amount, // micro-usd Amount
+        &source_address,  // Owner of sender ATA
+        &[],              // No additional signers
+        amount,           // micro-usd Amount
         6,
     )?;
 
@@ -553,7 +581,7 @@ async fn get_estimated_fees(
     let message = solana_sdk::message::Message::new_with_blockhash(
         &[transfer_ix],
         Some(&source_address),
-        &latest_blockhash
+        &latest_blockhash,
     );
 
     // Get estimated fee // 5000
@@ -578,14 +606,19 @@ async fn fetch_sol_usdc_price() -> Result<f64, MonexoMintError> {
     let url = "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd";
     let response = reqwest::Client::new()
         .get(url)
-        .send().await
+        .send()
+        .await
         .expect("could not reach price exchange provider")
         .text()
         .await
         .expect("could not reach price exchange provider");
 
-    let json: serde_json::Value = serde_json::from_str(&response).expect("could not reach price exchange provider");
-    let price = json["solana"]["usd"].as_f64().ok_or("Failed to get SOL/USDC price").expect("failed parse exchange response");
+    let json: serde_json::Value =
+        serde_json::from_str(&response).expect("could not reach price exchange provider");
+    let price = json["solana"]["usd"]
+        .as_f64()
+        .ok_or("Failed to get SOL/USDC price")
+        .expect("failed parse exchange response");
 
     Ok(price)
 }

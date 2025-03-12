@@ -1,5 +1,8 @@
 use async_trait::async_trait;
-use monexo_core::{proof::Proofs, primitives::{BtcOnchainMintQuote, BtcOnchainMeltQuote}};
+use monexo_core::{
+    primitives::{BtcOnchainMeltQuote, BtcOnchainMintQuote},
+    proof::Proofs,
+};
 
 use crate::error::MonexoMintError;
 use uuid::Uuid;

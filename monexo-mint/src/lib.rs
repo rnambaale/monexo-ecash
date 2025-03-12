@@ -1,6 +1,6 @@
-pub mod database;
 pub mod config;
+pub mod database;
 pub mod error;
-mod routes;
 pub mod mint;
+mod routes;
 pub mod server;

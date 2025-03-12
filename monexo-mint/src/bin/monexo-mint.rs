@@ -1,5 +1,9 @@
+use monexomint::{
+    self,
+    config::{MintConfig, TracingConfig},
+    mint::MintBuilder,
+};
 use std::env;
-use monexomint::{self, config::{MintConfig, TracingConfig}, mint::MintBuilder};
 
 use tracing_subscriber::{filter::EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -30,7 +34,7 @@ pub async fn main() -> anyhow::Result<()> {
         server,
         btconchain_backend,
         database,
-        tracing
+        tracing,
     } = MintConfig::read_config_with_defaults();
 
     init_tracing(tracing.clone())?;
