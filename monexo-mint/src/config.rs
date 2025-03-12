@@ -1,4 +1,3 @@
-
 use std::{env, net::SocketAddr};
 
 use clap::Parser;
@@ -22,10 +21,8 @@ pub struct Opts {
 
     // #[clap(long, env = "MINT_LIGHTNING_BACKEND")]
     // pub lightning_backend: LightningTypeVariant,
-
     // #[clap(long, env = "MINT_BTC_ONCHAIN_BACKEND")]
     // pub btconchain_backend: Option<BtcOnchainTypeVariant>,
-
     #[clap(flatten)]
     pub tracing: Option<TracingConfig>,
 }

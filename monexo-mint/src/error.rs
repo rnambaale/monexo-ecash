@@ -1,7 +1,10 @@
-
-use axum::{response::{IntoResponse, Response}, Json, http::StatusCode};
-use thiserror::Error;
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    Json,
+};
 use serde_json::json;
+use thiserror::Error;
 use tracing::{event, Level};
 
 #[derive(Error, Debug)]

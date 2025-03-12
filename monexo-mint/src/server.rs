@@ -1,21 +1,29 @@
 use crate::mint::Mint;
 use monexo_core::blind::{BlindedMessage, BlindedSignature};
 use monexo_core::keyset::{Keyset, Keysets};
-use monexo_core::primitives::{CurrencyUnit, MintInfoResponse, PostMeltBtcOnchainRequest, PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainRequest, PostMeltQuoteBtcOnchainResponse, PostMintQuoteBtcOnchainRequest, PostMintQuoteBtcOnchainResponse, PostSwapRequest, PostSwapResponse};
+use monexo_core::primitives::{
+    CurrencyUnit, MintInfoResponse, PostMeltBtcOnchainRequest, PostMeltBtcOnchainResponse,
+    PostMeltQuoteBtcOnchainRequest, PostMeltQuoteBtcOnchainResponse,
+    PostMintQuoteBtcOnchainRequest, PostMintQuoteBtcOnchainResponse, PostSwapRequest,
+    PostSwapResponse,
+};
 use monexo_core::proof::{P2SHScript, Proof, Proofs};
 use tracing::info;
 
-use axum::Router;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
+use axum::Router;
 
 use tower_http::cors::{Any, CorsLayer};
-use utoipa_swagger_ui::SwaggerUi;
 use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
-use crate::routes::default::{post_swap, get_info, get_keysets, get_keys, get_keys_by_id};
-use crate::routes::btconchain::{get_mint_quote_btconchain, post_mint_btconchain, post_mint_quote_btconchain, post_melt_quote_btconchain, get_melt_quote_btconchain, post_melt_btconchain};
+use crate::routes::btconchain::{
+    get_melt_quote_btconchain, get_mint_quote_btconchain, post_melt_btconchain,
+    post_melt_quote_btconchain, post_mint_btconchain, post_mint_quote_btconchain,
+};
+use crate::routes::default::{get_info, get_keys, get_keys_by_id, get_keysets, post_swap};
 
 pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
     if let Some(ref buildtime) = mint.build_params.build_time {
@@ -106,8 +114,7 @@ fn app(mint: Mint) -> Router {
         // .route("/v1/melt/quote/bolt11/:quote", get(get_melt_quote_bolt11))
         // .route("/v1/melt/bolt11", post(post_melt_bolt11))
         .route("/v1/swap", post(post_swap))
-        .route("/v1/info", get(get_info))
-        ;
+        .route("/v1/info", get(get_info));
 
     let btconchain_routes = {
         Router::new()
@@ -156,7 +163,6 @@ async fn get_health() -> impl IntoResponse {
     StatusCode::OK
 }
 
-
 #[cfg(test)]
 mod tests {
 
@@ -171,7 +177,10 @@ mod tests {
     use testcontainers_modules::postgres::Postgres;
 
     use crate::{
-        config::{DatabaseConfig, MintConfig, MintInfoConfig}, database::postgres::PostgresDB, mint::Mint, server::app
+        config::{DatabaseConfig, MintConfig, MintInfoConfig},
+        database::postgres::PostgresDB,
+        mint::Mint,
+        server::app,
     };
     use pretty_assertions::assert_eq;
 

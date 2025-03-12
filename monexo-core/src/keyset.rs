@@ -12,8 +12,8 @@
 
 use hex::ToHex;
 use itertools::Itertools;
-use std::{collections::HashMap, fmt::Display};
 use secp256k1::{PublicKey, Secp256k1, SecretKey};
+use std::{collections::HashMap, fmt::Display};
 
 use bitcoin_hashes::{sha256, Hash};
 use serde::{Deserialize, Serialize};

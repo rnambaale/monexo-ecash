@@ -1,0 +1,70 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install protobuf-compiler
+      run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    - name: Install just
+      run: cargo install just
+    - name: Run Docker Compose
+      run: docker compose --profile itest up -d
+    - name: check formatting
+      run: cargo fmt --all -- --check
+    - name: Build
+      run: cargo build --verbose
+    # - name: chmod data-dir
+    #   run: sudo chmod -R a+rwx ./data
+    - name: Run tests
+      run: just run-tests
+  coverage:
+    runs-on: ubuntu-latest
+    name: coverage
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Run Docker Compose
+        run: docker compose --profile itest up -d
+      - name: Install just
+        run: cargo install just
+      - name: Install grcov
+        run: cargo install grcov
+      - name: Install protobuf-compiler
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      - name: Install stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - name: Install llvm-tools-preview
+        run: rustup component add llvm-tools-preview
+      - name: Build
+        run: cargo build --verbose
+      # - name: chmod data-dir
+      #   run: sudo chmod -R a+rwx ./data
+      - name: run coverage test
+        run: just run-coverage-tests
+      # - name: delete data-dir
+      #   run: sudo rm -rf ./data
+      - name: run coverage-report
+        run: just run-coverage-report
+      # - name: Upload to codecov.io
+      #   uses: codecov/codecov-action@v5
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     fail_ci_if_error: true
+      #     files: ./target/coverage/lcov

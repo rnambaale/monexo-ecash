@@ -4,7 +4,9 @@ use std::time::Duration;
 use console::{style, Term};
 use indicatif::{ProgressBar, ProgressStyle};
 use monexo_wallet::error::MonexoWalletError;
-use monexo_wallet::{http::CrossPlatformHttpClient, localstore::sqlite::SqliteLocalStore, wallet::Wallet};
+use monexo_wallet::{
+    http::CrossPlatformHttpClient, localstore::sqlite::SqliteLocalStore, wallet::Wallet,
+};
 use num_format::Locale;
 use num_format::ToFormattedString;
 
@@ -52,8 +54,6 @@ pub async fn get_mints_with_balance(
     Ok(keysets
         .into_iter()
         .filter(|k| k.active)
-        .map(|k| {
-            all_proofs.proofs_by_keyset(&k.keyset_id).total_amount()
-        })
+        .map(|k| all_proofs.proofs_by_keyset(&k.keyset_id).total_amount())
         .collect::<Vec<u64>>())
 }

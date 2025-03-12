@@ -2,7 +2,13 @@ use std::str::FromStr;
 
 use async_trait::async_trait;
 
-use monexo_core::{dhke, primitives::{BtcOnchainMeltQuote, BtcOnchainMintQuote, MeltBtcOnchainState, MintBtcOnchainState}, proof::{Proof, Proofs}};
+use monexo_core::{
+    dhke,
+    primitives::{
+        BtcOnchainMeltQuote, BtcOnchainMintQuote, MeltBtcOnchainState, MintBtcOnchainState,
+    },
+    proof::{Proof, Proofs},
+};
 use sqlx::postgres::PgPoolOptions;
 use tracing::instrument;
 use uuid::Uuid;

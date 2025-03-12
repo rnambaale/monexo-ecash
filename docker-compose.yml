@@ -1,0 +1,70 @@
+services:
+  database:
+    image: "postgres:16.6-alpine"
+    container_name: monexo-mint-db
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: monexo-mint
+    profiles:
+      - tracing
+
+  nutshell:
+    image: cashubtc/nutshell:0.16.3
+    container_name: nutshell
+    ports:
+      - "2228:3338"
+    environment:
+      - MINT_DERIVATION_PATH_LIST=["m/0'/0'/0'", "m/0'/0'/1'", "m/0'/1'/0'", "m/0'/2'/0'"]
+      - MINT_BACKEND_BOLT11_SAT=FakeWallet
+      - MINT_BACKEND_BOLT11_USD=FakeWallet
+      - MINT_LISTEN_HOST=0.0.0.0
+      - MINT_LISTEN_PORT=3338
+      - MINT_PRIVATE_KEY=TEST_PRIVATE_KEY
+      - MINT_INFO_NAME=nutshell
+    command: ["poetry", "run", "mint"]
+    profiles:
+      - itest
+
+  prometheus:
+    image: "prom/prometheus:v2.45.0"
+    command:
+      - "--config.file=/etc/prometheus.yaml"
+      - "--enable-feature=exemplar-storage"
+      - "--web.enable-remote-write-receiver"
+    volumes:
+      - "./conf/prometheus.yaml:/etc/prometheus.yaml"
+    ports:
+      - "127.0.0.1:9090:9090"
+    profiles:
+      - tracing
+
+  tempo:
+    image: "grafana/tempo:2.4.0"
+    command:
+      - "-config.file=/etc/tempo.yaml"
+    volumes:
+      - "./conf/tempo.yaml:/etc/tempo.yaml"
+    ports:
+      - "127.0.0.1:3200:3200" # Tempo
+      - "127.0.0.1:4317:4317" # OTLP GRPC
+      - "127.0.0.1:4318:4318" # OTLP HTTP
+    profiles:
+      - tracing
+
+  app:
+    #image: "docker.io/ngutech21/monexo-mint:latest"
+    image: "monexo-mint:latest" # for local testing
+    container_name: monexo-mint
+    ports:
+      - 3338:3338
+    environment:
+      - MINT_DB_URL=postgres://postgres:postgres@monexo-mint-db/monexo-mint
+      - DATABASE_URL=postgres://postgres:postgres@monexo-mint-db/monexo-mint
+      - MINT_PRIVATE_KEY=supersecretkey
+    depends_on:
+      - database
+    profiles:
+      - app

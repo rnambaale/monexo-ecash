@@ -1,10 +1,28 @@
 use std::collections::HashMap;
 
-use monexo_core::{amount::Amount, blind::{BlindedMessage, BlindedSignature, BlindingFactor, TotalAmount}, dhke::Dhke, keyset::KeysetId, primitives::{CurrencyUnit, MeltBtcOnchainState, MintBtcOnchainState, MintInfoResponse, PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainResponse, PostMintQuoteBtcOnchainResponse}, proof::{Proof, Proofs}, token::TokenV3};
+use monexo_core::{
+    amount::Amount,
+    blind::{BlindedMessage, BlindedSignature, BlindingFactor, TotalAmount},
+    dhke::Dhke,
+    keyset::KeysetId,
+    primitives::{
+        CurrencyUnit, MeltBtcOnchainState, MintBtcOnchainState, MintInfoResponse,
+        PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainResponse,
+        PostMintQuoteBtcOnchainResponse,
+    },
+    proof::{Proof, Proofs},
+    token::TokenV3,
+};
 use secp256k1::PublicKey;
 use url::Url;
 
-use crate::{client::CashuClient, error::MonexoWalletError, http::CrossPlatformHttpClient, localstore::{LocalStore, WalletKeyset}, secret::DeterministicSecret};
+use crate::{
+    client::CashuClient,
+    error::MonexoWalletError,
+    http::CrossPlatformHttpClient,
+    localstore::{LocalStore, WalletKeyset},
+    secret::DeterministicSecret,
+};
 
 #[derive(Clone)]
 pub struct Wallet<L, C>
@@ -107,9 +125,7 @@ where
         mint_url: &Url,
         amount: u64,
     ) -> Result<PostMintQuoteBtcOnchainResponse, MonexoWalletError> {
-        self.client
-            .post_mint_quote_onchain(mint_url, amount)
-            .await
+        self.client.post_mint_quote_onchain(mint_url, amount).await
     }
 
     pub async fn is_quote_paid(
@@ -185,12 +201,7 @@ where
                 }
             };
 
-            let wallet_keyset = WalletKeyset::new(
-                &keyset_id,
-                0,
-                public_keys,
-                keyset.active,
-            );
+            let wallet_keyset = WalletKeyset::new(&keyset_id, 0, public_keys, keyset.active);
 
             result.push(wallet_keyset.clone());
             self.localstore
@@ -305,8 +316,7 @@ where
 
         let mut tx = self.localstore.begin_tx().await?;
         let total_proofs = {
-            let selected_tokens =
-                (mint_url.to_owned(), selected_proofs.clone()).into();
+            let selected_tokens = (mint_url.to_owned(), selected_proofs.clone()).into();
             let swap_result = self
                 .swap_tokens(mint_url, wallet_keyset, &selected_tokens, ln_amount.into())
                 .await?;
@@ -322,11 +332,7 @@ where
 
         let melt_response = self
             .client
-            .post_melt_onchain(
-                &mint_url,
-                total_proofs.clone(),
-                melt_quote.quote.clone(),
-            )
+            .post_melt_onchain(&mint_url, total_proofs.clone(), melt_quote.quote.clone())
             .await?;
 
         if melt_response.state == MeltBtcOnchainState::Paid {
@@ -456,7 +462,7 @@ where
 
     pub async fn get_mint_info(
         &self,
-        mint_url: &Url
+        mint_url: &Url,
     ) -> Result<MintInfoResponse, MonexoWalletError> {
         self.client.get_info(mint_url).await
     }
@@ -535,7 +541,8 @@ where
                     .map(|(msg, _, _)| msg)
                     .collect::<Vec<BlindedMessage>>(),
             )
-            .await?.signatures;
+            .await?
+            .signatures;
 
         // step 3: unblind signatures
         let current_keyset_id = wallet_keyset.keyset_id.to_string(); // FIXME
@@ -680,11 +687,20 @@ fn get_blinded_msg(blinded_messages: Vec<(BlindedMessage, BlindingFactor)>) -> V
 mod tests {
     use std::collections::HashMap;
 
-    use monexo_core::{fixture::{read_fixture, read_fixture_as}, keyset::{KeysetId, Keysets, MintKeyset}, primitives::{CurrencyUnit, KeyResponse, KeysResponse, PostSwapResponse}, token::TokenV3};
+    use monexo_core::{
+        fixture::{read_fixture, read_fixture_as},
+        keyset::{KeysetId, Keysets, MintKeyset},
+        primitives::{CurrencyUnit, KeyResponse, KeysResponse, PostSwapResponse},
+        token::TokenV3,
+    };
     use secp256k1::PublicKey;
     use url::Url;
 
-    use crate::{client::MockCashuClient, localstore::{sqlite::SqliteLocalStore, LocalStore, WalletKeyset}, wallet::WalletBuilder};
+    use crate::{
+        client::MockCashuClient,
+        localstore::{sqlite::SqliteLocalStore, LocalStore, WalletKeyset},
+        wallet::WalletBuilder,
+    };
 
     fn create_mock() -> MockCashuClient {
         let keys = MintKeyset::new("mykey", "");
@@ -848,7 +864,9 @@ mod tests {
 
         let tokens = read_fixture("token_64.cashu")?.try_into()?;
         let mint_url = Url::parse("http://127.0.0.1:3338")?;
-        let result = wallet.swap_tokens(&mint_url, &keyset, &tokens, 20.into()).await?;
+        let result = wallet
+            .swap_tokens(&mint_url, &keyset, &tokens, 20.into())
+            .await?;
 
         let first = result.0;
 
@@ -886,13 +904,7 @@ mod tests {
         let pub_keys = read_fixture_as::<HashMap<u64, PublicKey>>("pub_keys.json")?;
         let keyset_id = KeysetId::new("00d31cecf59d18c0")?;
 
-        let wallet_keyset = WalletKeyset::new(
-            &keyset_id,
-            0,
-            pub_keys.clone(),
-            true,
-        );
+        let wallet_keyset = WalletKeyset::new(&keyset_id, 0, pub_keys.clone(), true);
         Ok(wallet_keyset)
     }
-
 }
