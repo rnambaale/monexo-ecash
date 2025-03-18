@@ -41,7 +41,7 @@
 //! If true, C must have originated from Bob
 //!
 //!
-use crate::{blind::BlindingFactor, error::MonexoCoreError};
+use crate::{blind::{BlindSignatureDleq, BlindingFactor}, error::MonexoCoreError};
 use bitcoin_hashes::{sha256, Hash};
 use secp256k1::{All, PublicKey, Scalar, Secp256k1, SecretKey};
 use std::iter::once;
@@ -128,6 +128,19 @@ impl Dhke {
         Some(c == y.mul_tweak(&self.secp, &Scalar::from(a))?).ok_or(
             MonexoCoreError::Secp256k1Error(secp256k1::Error::InvalidPublicKey),
         )
+    }
+
+    pub fn calculate_dleq(
+        &self,
+        blinded_signature: PublicKey, // C'
+        blinded_message: &PublicKey,  // B'
+        mint_secret_key: &SecretKey,  // a
+    ) -> Result<BlindSignatureDleq, MonexoCoreError> {
+        let r: SecretKey = Secp256k1::gen_new();
+        // Secp256k1::gen_new()
+
+        // let r1 = r.;
+        todo!()
     }
 }
 

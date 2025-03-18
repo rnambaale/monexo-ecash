@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use monexo_core::{
-    primitives::{BtcOnchainMeltQuote, BtcOnchainMintQuote},
-    proof::Proofs,
+    blind::BlindedSignature, primitives::{BtcOnchainMeltQuote, BtcOnchainMintQuote}, proof::Proofs
 };
 
 use crate::error::MonexoMintError;
@@ -41,6 +40,14 @@ pub trait Database {
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
         quote: &BtcOnchainMintQuote,
+    ) -> Result<(), MonexoMintError>;
+
+    async fn add_blind_signatures(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+        blinded_messages: &[String],
+        blinded_signatures: &[BlindedSignature],
+        quote_id: Uuid,
     ) -> Result<(), MonexoMintError>;
 
     async fn add_onchain_melt_quote(
