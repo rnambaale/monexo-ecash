@@ -27,3 +27,15 @@ CREATE TABLE onchain_melt_quotes (
     state TEXT NOT NULL,
     CONSTRAINT onchain_melt_quotes_pkey PRIMARY KEY (id)
 );
+
+CREATE TABLE IF NOT EXISTS blind_signatures (
+    y BLOB PRIMARY KEY,
+    amount INTEGER NOT NULL,
+    keyset_id TEXT NOT NULL REFERENCES keyset(id),
+    c BLOB NOT NULL,
+    dleq_e TEXT,
+    dleq_s TEXT,
+    quote_id uuid NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS keyset_id_index ON blind_signatures(keyset_id);

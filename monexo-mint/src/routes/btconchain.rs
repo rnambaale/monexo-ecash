@@ -191,6 +191,19 @@ pub async fn post_mint_btconchain(
             },
         )
         .await?;
+
+    // mint.db
+    //     .add_blind_signatures(
+    //         &request
+    //             .outputs
+    //             .iter()
+    //             .map(|p| p.blinded_secret)
+    //             .collect::<Vec<PublicKey>>(),
+    //         &signatures,
+    //         Some(request.quote),
+    //     )
+    //     .await?;
+
     tx.commit().await?;
     Ok(Json(PostMintBtcOnchainResponse { signatures }))
 }

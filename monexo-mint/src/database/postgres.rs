@@ -3,11 +3,9 @@ use std::str::FromStr;
 use async_trait::async_trait;
 
 use monexo_core::{
-    dhke,
-    primitives::{
+    blind::BlindedSignature, dhke, primitives::{
         BtcOnchainMeltQuote, BtcOnchainMintQuote, MeltBtcOnchainState, MintBtcOnchainState,
-    },
-    proof::{Proof, Proofs},
+    }, proof::{Proof, Proofs}
 };
 use sqlx::postgres::PgPoolOptions;
 use tracing::instrument;
@@ -147,6 +145,46 @@ impl Database for PostgresDB {
         )
         .execute(&mut **tx)
         .await?;
+        Ok(())
+    }
+
+    async fn add_blind_signatures(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+        blinded_messages: &[String],
+        blinded_signatures: &[BlindedSignature],
+        quote_id: Uuid,
+    ) -> Result<(), MonexoMintError> {
+        // let mut transaction = self.pool.begin().await.map_err(Error::from)?;
+        for (message, signature) in blinded_messages.iter().zip(blinded_signatures) {
+            let res = sqlx::query(
+                r#"
+INSERT INTO blind_signature
+(y, amount, keyset_id, c, quote_id, dleq_e, dleq_s)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+        "#,
+            )
+            .bind(message.to_bytes().to_vec())
+            .bind(u64::from(signature.amount) as i64)
+            .bind(signature.keyset_id.to_string())
+            .bind(signature.c.to_bytes().to_vec())
+            .bind(quote_id.map(|q| q.hyphenated()))
+            .bind(signature.dleq.as_ref().map(|dleq| dleq.e.to_secret_hex()))
+            .bind(signature.dleq.as_ref().map(|dleq| dleq.s.to_secret_hex()))
+            .execute(&mut **tx)
+            .await;
+
+            if let Err(err) = res {
+                tracing::error!("SQLite could not add blind signature");
+                if let Err(err) = transaction.rollback().await {
+                    tracing::error!("Could not rollback sql transaction: {}", err);
+                }
+                return Err(Error::SQLX(err).into());
+            }
+        }
+
+        // transaction.commit().await.map_err(Error::from)?;
+
         Ok(())
     }
 
