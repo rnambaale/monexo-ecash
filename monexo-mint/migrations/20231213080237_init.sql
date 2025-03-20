@@ -27,3 +27,19 @@ CREATE TABLE onchain_melt_quotes (
     state TEXT NOT NULL,
     CONSTRAINT onchain_melt_quotes_pkey PRIMARY KEY (id)
 );
+
+-- Keysets Table
+CREATE TABLE IF NOT EXISTS keysets (
+    id TEXT PRIMARY KEY,
+    unit TEXT NOT NULL,
+    active BOOL NOT NULL,
+    valid_from INTEGER NOT NULL,
+    valid_to INTEGER,
+    derivation_path TEXT NOT NULL,
+    max_order INTEGER NOT NULL,
+    input_fee_ppk INTEGER,
+    derivation_path_index INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS unit_index ON keysets(unit);
+CREATE INDEX IF NOT EXISTS active_index ON keysets(active);

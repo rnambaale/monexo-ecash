@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO keysets (id, unit, active, valid_from, valid_to, derivation_path, max_order, input_fee_ppk, derivation_path_index) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n            ON CONFLICT(id) DO UPDATE SET\n            unit = excluded.unit,\n            active = excluded.active,\n            valid_from = excluded.valid_from,\n            valid_to = excluded.valid_to,\n            derivation_path = excluded.derivation_path,\n            max_order = excluded.max_order,\n            input_fee_ppk = excluded.input_fee_ppk,\n            derivation_path_index = excluded.derivation_path_index",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Bool",
+        "Int4",
+        "Int4",
+        "Text",
+        "Int4",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6a53568e71a87300ab7a4c2e3f7aab8cb9ed404755753615c944a435cb8eda7f"
+}
