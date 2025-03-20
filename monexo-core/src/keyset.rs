@@ -13,15 +13,58 @@
 use hex::ToHex;
 use itertools::Itertools;
 use secp256k1::{PublicKey, Secp256k1, SecretKey};
-use std::{collections::HashMap, fmt::Display};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::Display,
+    ops::Deref,
+};
 
 use bitcoin_hashes::{sha256, Hash};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::{error::MonexoCoreError, primitives::CurrencyUnit};
+use crate::{amount::Amount, error::MonexoCoreError, primitives::CurrencyUnit};
 
 const MAX_ORDER: u64 = 64;
+
+/// Mint Keyset Info
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MintKeySetInfo {
+    /// Keyset [`Id`]
+    pub id: String,
+
+    /// Keyset [`CurrencyUnit`]
+    pub unit: CurrencyUnit,
+
+    /// Keyset active or inactive
+    /// Mint will only issue new [`BlindSignature`] on active keysets
+    pub active: bool,
+
+    /// Starting unix time Keyset is valid from
+    pub valid_from: u64,
+
+    /// When the Keyset is valid to
+    /// This is not shown to the wallet and can only be used internally
+    pub valid_to: Option<u64>,
+
+    /// [`DerivationPath`] keyset
+    pub derivation_path: Option<String>,
+
+    /// DerivationPath index of Keyset
+    pub derivation_path_index: Option<i32>,
+
+    /// Max order of keyset
+    pub max_order: u8,
+
+    /// Input Fee ppk
+    #[serde(default = "default_fee")]
+    pub input_fee_ppk: u64,
+}
+
+/// Default fee
+pub fn default_fee() -> u64 {
+    0
+}
 
 #[derive(Debug, Clone)]
 pub struct MintKeyset {
@@ -44,12 +87,6 @@ impl MintKeyset {
     }
 }
 
-// FIXME rename to keysets
-#[derive(Clone, Debug, Serialize, Deserialize, Default, ToSchema, PartialEq, Eq)]
-pub struct Keysets {
-    pub keysets: Vec<Keyset>,
-}
-
 // FIXME rename to keyset
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
 pub struct Keyset {
@@ -58,10 +95,59 @@ pub struct Keyset {
     pub active: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MintKeySet {
+    /// Keyset [`Id`]
+    pub id: String, // FIXME use KeysetId
+    /// Keyset [`CurrencyUnit`]
+    pub unit: CurrencyUnit,
+    /// Keyset [`MintKeys`]
+    pub keys: MintKeys,
+}
+
+/// Mint key pairs per amount
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MintKeys(BTreeMap<Amount, MintKeyPair>);
+
+impl Deref for MintKeys {
+    type Target = BTreeMap<Amount, MintKeyPair>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+/// Mint Public Private key pair
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MintKeyPair {
+    /// Publickey
+    pub public_key: PublicKey,
+    /// Secretkey
+    pub secret_key: SecretKey,
+}
+
+// impl MintKeyPair {
+//     /// [`MintKeyPair`] from secret key
+//     #[inline]
+//     pub fn from_secret_key(secret_key: SecretKey) -> Self {
+//         Self {
+//             public_key: secret_key.public_key(),
+//             secret_key,
+//         }
+//     }
+// }
+
+// FIXME rename to keysets
+#[derive(Clone, Debug, Serialize, Deserialize, Default, ToSchema, PartialEq, Eq)]
+pub struct Keysets {
+    pub keysets: Vec<Keyset>,
+}
+
 impl Keysets {
-    pub fn new(id: String, unit: CurrencyUnit, active: bool) -> Self {
+    pub fn new(keysets: Vec<Keyset>) -> Self {
         Self {
-            keysets: vec![Keyset { id, unit, active }],
+            // keysets: vec![Keyset { id, unit, active }],
+            keysets,
         }
     }
 
@@ -74,6 +160,17 @@ impl Keysets {
             Ok(computed_id)
         } else {
             Err(MonexoCoreError::InvalidKeysetid)
+        }
+    }
+}
+
+impl From<MintKeySetInfo> for Keyset {
+    fn from(keyset_info: MintKeySetInfo) -> Self {
+        Self {
+            id: keyset_info.id,
+            unit: keyset_info.unit,
+            active: keyset_info.active,
+            // input_fee_ppk: keyset_info.input_fee_ppk,
         }
     }
 }

@@ -10,6 +10,8 @@ pub struct Opts {
     pub privatekey: String,
     #[clap(long, env = "MINT_DERIVATION_PATH")]
     pub derivation_path: Option<String>,
+    #[clap(long, env = "UGX_MINT_DERIVATION_PATH")]
+    pub ugx_derivation_path: Option<String>,
     #[clap(flatten)]
     pub info: MintInfoConfig,
     // #[clap(flatten)]
@@ -55,6 +57,7 @@ pub struct TracingConfig {
 pub struct MintConfig {
     pub privatekey: String,
     pub derivation_path: Option<String>,
+    pub ugx_derivation_path: Option<String>,
     pub info: MintInfoConfig,
     // pub lightning_fee: LightningFeeConfig,
     pub server: ServerConfig,
@@ -69,6 +72,7 @@ impl From<(Opts, BtcOnchainConfig)> for MintConfig {
         Self {
             privatekey: opts.privatekey,
             derivation_path: opts.derivation_path,
+            ugx_derivation_path: opts.ugx_derivation_path,
             info: opts.info,
             server: opts.server,
             btconchain_backend: Some(btc),
@@ -101,6 +105,7 @@ impl MintConfig {
     pub const fn new(
         private_key: String,
         derivation_path: Option<String>,
+        ugx_derivation_path: Option<String>,
         info: MintInfoConfig,
         // lightning_fee: LightningFeeConfig,
         server: ServerConfig,
@@ -113,6 +118,7 @@ impl MintConfig {
             privatekey: private_key,
             server,
             derivation_path,
+            ugx_derivation_path,
             info,
             btconchain_backend,
             database,

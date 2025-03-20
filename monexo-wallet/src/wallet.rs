@@ -689,7 +689,7 @@ mod tests {
 
     use monexo_core::{
         fixture::{read_fixture, read_fixture_as},
-        keyset::{KeysetId, Keysets, MintKeyset},
+        keyset::{Keyset, KeysetId, Keysets, MintKeyset},
         primitives::{CurrencyUnit, KeyResponse, KeysResponse, PostSwapResponse},
         token::TokenV3,
     };
@@ -711,7 +711,11 @@ mod tests {
         };
         let keys_response = KeysResponse::new(key_response.clone());
         let keys_by_id_response = keys_response.clone();
-        let keysets = Keysets::new(keys.keyset_id, CurrencyUnit::Usd, true);
+        let keysets = Keysets::new(vec![Keyset {
+            id: keys.keyset_id,
+            unit: CurrencyUnit::Usd,
+            active: true,
+        }]);
 
         let mut client = MockCashuClient::default();
         client

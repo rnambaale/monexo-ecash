@@ -23,7 +23,9 @@ use crate::routes::btconchain::{
     get_melt_quote_btconchain, get_mint_quote_btconchain, post_melt_btconchain,
     post_melt_quote_btconchain, post_mint_btconchain, post_mint_quote_btconchain,
 };
-use crate::routes::default::{get_info, get_keys, get_keys_by_id, get_keysets, post_swap};
+use crate::routes::default::{
+    get_info, get_keys, get_keys_by_id, get_keysets, post_check_state, post_swap,
+};
 
 pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
     if let Some(ref buildtime) = mint.build_params.build_time {
@@ -114,6 +116,7 @@ fn app(mint: Mint) -> Router {
         // .route("/v1/melt/quote/bolt11/:quote", get(get_melt_quote_bolt11))
         // .route("/v1/melt/bolt11", post(post_melt_bolt11))
         .route("/v1/swap", post(post_swap))
+        .route("/v1/checkstate", post(post_check_state))
         .route("/v1/info", get(get_info));
 
     let btconchain_routes = {

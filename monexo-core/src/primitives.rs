@@ -18,8 +18,34 @@ use crate::{
 #[serde(rename_all = "lowercase")]
 pub enum CurrencyUnit {
     Ugx,
-    Sat,
     Usd,
+    MUsd,
+    Sat,
+}
+
+impl Display for CurrencyUnit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Ugx => write!(f, "ugx"),
+            Self::Usd => write!(f, "usd"),
+            Self::MUsd => write!(f, "musd"),
+            Self::Sat => write!(f, "sat"),
+        }
+    }
+}
+
+impl FromStr for CurrencyUnit {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "ugx" => Ok(Self::Ugx),
+            "usd" => Ok(Self::Usd),
+            "musd" => Ok(Self::MUsd),
+            "sat" => Ok(Self::Sat),
+            _ => Err(()),
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
@@ -316,11 +342,14 @@ mod tests {
     fn test_serialize_keyresponse() -> anyhow::Result<()> {
         let response = KeyResponse {
             id: "test".to_string(),
-            unit: crate::primitives::CurrencyUnit::Sat,
+            unit: crate::primitives::CurrencyUnit::MUsd,
             keys: std::collections::HashMap::new(),
         };
         let serialized = serde_json::to_string(&response)?;
-        assert_eq!(serialized, "{\"id\":\"test\",\"unit\":\"sat\",\"keys\":{}}");
+        assert_eq!(
+            serialized,
+            "{\"id\":\"test\",\"unit\":\"musd\",\"keys\":{}}"
+        );
         Ok(())
     }
 

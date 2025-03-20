@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use monexo_core::{
+    keyset::{KeysetId, MintKeySetInfo},
     primitives::{BtcOnchainMeltQuote, BtcOnchainMintQuote},
     proof::Proofs,
 };
@@ -60,4 +61,21 @@ pub trait Database {
         tx: &mut sqlx::Transaction<Self::DB>,
         quote: &BtcOnchainMeltQuote,
     ) -> Result<(), MonexoMintError>;
+
+    async fn add_keyset_info(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+        keyset: MintKeySetInfo,
+    ) -> Result<(), MonexoMintError>;
+
+    async fn get_keyset_info(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+        id: &KeysetId,
+    ) -> Result<MintKeySetInfo, MonexoMintError>;
+
+    async fn get_keyset_infos(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+    ) -> Result<Vec<MintKeySetInfo>, MonexoMintError>;
 }

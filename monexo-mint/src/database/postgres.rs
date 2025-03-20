@@ -4,8 +4,10 @@ use async_trait::async_trait;
 
 use monexo_core::{
     dhke,
+    keyset::{KeysetId, MintKeySetInfo},
     primitives::{
-        BtcOnchainMeltQuote, BtcOnchainMintQuote, MeltBtcOnchainState, MintBtcOnchainState,
+        BtcOnchainMeltQuote, BtcOnchainMintQuote, CurrencyUnit, MeltBtcOnchainState,
+        MintBtcOnchainState,
     },
     proof::{Proof, Proofs},
 };
@@ -215,4 +217,130 @@ impl Database for PostgresDB {
         .await?;
         Ok(())
     }
+
+    #[instrument(level = "debug", skip(self), err)]
+    async fn add_keyset_info(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+        keyset: MintKeySetInfo,
+    ) -> Result<(), MonexoMintError> {
+        sqlx::query!(
+            "INSERT INTO keysets (id, unit, active, valid_from, valid_to, derivation_path, max_order, input_fee_ppk, derivation_path_index) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            ON CONFLICT(id) DO UPDATE SET
+            unit = excluded.unit,
+            active = excluded.active,
+            valid_from = excluded.valid_from,
+            valid_to = excluded.valid_to,
+            derivation_path = excluded.derivation_path,
+            max_order = excluded.max_order,
+            input_fee_ppk = excluded.input_fee_ppk,
+            derivation_path_index = excluded.derivation_path_index",
+            keyset.id,
+            keyset.unit.to_string(),
+            keyset.active,
+            keyset.valid_from as i64,
+            keyset.valid_to.map(|v| v as i32),
+            keyset.derivation_path,
+            keyset.max_order as i64,
+            keyset.input_fee_ppk as i64,
+            keyset.derivation_path_index,
+        )
+        .execute(&mut **tx)
+        .await?;
+        Ok(())
+    }
+
+    #[instrument(level = "debug", skip(self), err)]
+    async fn get_keyset_info(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+        id: &KeysetId,
+    ) -> Result<MintKeySetInfo, MonexoMintError> {
+        let keyset: MintKeySetInfo = sqlx::query!(
+            "SELECT id, unit, active, valid_from, valid_to, derivation_path, max_order, input_fee_ppk, derivation_path_index FROM keysets WHERE id = $1",
+            id.to_string()
+        )
+        .map(|row| {
+            let row_valid_to = row.valid_to;
+            let row_valid_to: Option<u64> = row_valid_to.and_then(|n| n.try_into().ok());
+            let row_derivation_path = Some(row.derivation_path);
+
+            MintKeySetInfo {
+                id: row.id,
+                unit: CurrencyUnit::from_str(&row.unit).expect("invalid currency unit in keyset"),
+                active: row.active,
+                valid_from: row.valid_from as u64,
+                valid_to: row_valid_to,
+                derivation_path: row_derivation_path,
+                max_order: row.max_order as u8,
+                input_fee_ppk: row.input_fee_ppk.unwrap() as u64,
+                derivation_path_index: row.derivation_path_index,
+            }
+        })
+        .fetch_one(&mut **tx)
+        .await?;
+
+        Ok(keyset)
+    }
+
+    async fn get_keyset_infos(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+    ) -> Result<Vec<MintKeySetInfo>, MonexoMintError> {
+        let keysets = sqlx::query!("SELECT * FROM keysets")
+            .fetch_all(&mut **tx)
+            .await?
+            .into_iter()
+            .map(|row| {
+                let row_valid_to = row.valid_to;
+                let row_valid_to: Option<u64> = row_valid_to.and_then(|n| n.try_into().ok());
+                let row_derivation_path = Some(row.derivation_path);
+
+                MintKeySetInfo {
+                    id: row.id,
+                    unit: CurrencyUnit::from_str(&row.unit)
+                        .expect("invalid currency unit in keyset"),
+                    active: row.active,
+                    valid_from: row.valid_from as u64,
+                    valid_to: row_valid_to,
+                    derivation_path: row_derivation_path,
+                    max_order: row.max_order as u8,
+                    input_fee_ppk: row.input_fee_ppk.unwrap() as u64,
+                    derivation_path_index: row.derivation_path_index,
+                }
+            })
+            .collect::<Vec<MintKeySetInfo>>();
+
+        Ok(keysets)
+    }
+
+    //     async fn get_keyset_infos(&self) -> Result<Vec<MintKeySetInfo>, Self::Err> {
+    //         let mut transaction = self.pool.begin().await.map_err(Error::from)?;
+    //         let recs = sqlx::query(
+    //             r#"
+    // SELECT *
+    // FROM keyset;
+    //         "#,
+    //         )
+    //         .fetch_all(&mut *transaction)
+    //         .await
+    //         .map_err(Error::from);
+
+    //         match recs {
+    //             Ok(recs) => {
+    //                 transaction.commit().await.map_err(Error::from)?;
+    //                 Ok(recs
+    //                     .into_iter()
+    //                     .map(sqlite_row_to_keyset_info)
+    //                     .collect::<Result<_, _>>()?)
+    //             }
+    //             Err(err) => {
+    //                 tracing::error!("SQLite could not get keyset info");
+    //                 if let Err(err) = transaction.rollback().await {
+    //                     tracing::error!("Could not rollback sql transaction: {}", err);
+    //                 }
+    //                 Err(err.into())
+    //             }
+    //         }
+    //     }
 }

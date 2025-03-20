@@ -33,6 +33,7 @@ pub struct Mint<DB: Database = PostgresDB> {
     // pub lightning: Arc<dyn Lightning + Send + Sync>,
     // pub lightning_type: LightningType,
     pub keyset: MintKeyset,
+    pub ugx_keyset: MintKeyset,
     pub db: DB,
     pub dhke: Dhke,
     // pub onchain: Option<Arc<dyn BtcOnchain + Send + Sync>>,
@@ -58,6 +59,10 @@ where
                 &config.privatekey.clone(),
                 &config.derivation_path.clone().unwrap_or_default(),
             ),
+            ugx_keyset: MintKeyset::new(
+                &config.privatekey.clone(),
+                &config.ugx_derivation_path.clone().unwrap_or_default(),
+            ),
             db,
             dhke: Dhke::new(),
             config,
@@ -68,18 +73,19 @@ where
     pub fn create_blinded_signatures(
         &self,
         blinded_messages: &[BlindedMessage],
-        keyset: &MintKeyset,
     ) -> Result<Vec<BlindedSignature>, MonexoMintError> {
         blinded_messages
             .iter()
             .map(|blinded_msg| {
-                let private_key = keyset
+                let mint_keyset = self.get_mint_keyset(&blinded_msg.id)?;
+
+                let private_key = mint_keyset
                     .private_keys
                     .get(&blinded_msg.amount)
                     .ok_or(MonexoMintError::PrivateKeyNotFound)?;
                 let blinded_sig = self.dhke.step2_bob(blinded_msg.b_, private_key)?;
                 Ok(BlindedSignature {
-                    id: keyset.keyset_id.clone(),
+                    id: mint_keyset.keyset_id.clone(),
                     amount: blinded_msg.amount,
                     c_: blinded_sig,
                 })
@@ -87,16 +93,26 @@ where
             .collect::<Result<Vec<_>, _>>()
     }
 
-    #[instrument(level = "debug", skip(self, outputs, keyset), err)]
+    #[instrument(level = "debug", skip(self, outputs), err)]
     pub async fn mint_tokens(
         &self,
         tx: &mut Transaction<'_, <DB as Database>::DB>,
         key: String,
         outputs: &[BlindedMessage],
-        keyset: &MintKeyset,
         return_error: bool,
     ) -> Result<Vec<BlindedSignature>, MonexoMintError> {
-        self.create_blinded_signatures(outputs, keyset)
+        self.create_blinded_signatures(outputs)
+    }
+
+    pub fn get_mint_keyset(&self, keyset_id: &str) -> Result<&MintKeyset, MonexoMintError> {
+        if keyset_id.to_string() == self.keyset.keyset_id {
+            return Ok(&self.keyset);
+        }
+        if keyset_id.to_string() == self.ugx_keyset.keyset_id {
+            return Ok(&self.ugx_keyset);
+        }
+
+        Err(MonexoMintError::PrivateKeyNotFound)
     }
 
     pub async fn check_used_proofs(
@@ -156,7 +172,6 @@ where
         &self,
         proofs: &Proofs,
         blinded_messages: &[BlindedMessage],
-        keyset: &MintKeyset,
     ) -> Result<Vec<BlindedSignature>, MonexoMintError> {
         let mut tx = self.db.begin_tx().await?;
         self.check_used_proofs(&mut tx, proofs).await?;
@@ -167,7 +182,7 @@ where
 
         let sum_proofs = proofs.total_amount();
 
-        let promises = self.create_blinded_signatures(blinded_messages, keyset)?;
+        let promises = self.create_blinded_signatures(blinded_messages)?;
         let amount_promises = promises.total_amount();
         if sum_proofs != amount_promises {
             return Err(MonexoMintError::SwapAmountMismatch(format!(
@@ -272,6 +287,7 @@ where
 pub struct MintBuilder {
     private_key: Option<String>,
     derivation_path: Option<String>,
+    ugx_derivation_path: Option<String>,
     db_config: Option<DatabaseConfig>,
     mint_info_settings: Option<MintInfoConfig>,
     server_config: Option<ServerConfig>,
@@ -284,6 +300,7 @@ impl MintBuilder {
         MintBuilder {
             private_key: None,
             derivation_path: None,
+            ugx_derivation_path: None,
             db_config: None,
             mint_info_settings: None,
             server_config: None,
@@ -312,6 +329,11 @@ impl MintBuilder {
         self
     }
 
+    pub fn with_ugx_derivation_path(mut self, ugx_derivation_path: Option<String>) -> Self {
+        self.ugx_derivation_path = ugx_derivation_path;
+        self
+    }
+
     pub fn with_private_key(mut self, private_key: String) -> Self {
         self.private_key = Some(private_key);
         self
@@ -332,11 +354,16 @@ impl MintBuilder {
         let db = PostgresDB::new(&db_config).await?;
         db.migrate().await;
 
+        // let mut supported_units: HashMap<CurrencyUnit, (u64, u8)>;
+        // supported_units.insert(CurrencyUnit::Usd, (0, 32));
+        // supported_units.insert(CurrencyUnit::Ugx, (0, 32));
+
         Ok(Mint::new(
             db,
             MintConfig::new(
                 self.private_key.expect("private-key not set"),
                 self.derivation_path,
+                self.ugx_derivation_path,
                 self.mint_info_settings.unwrap_or_default(),
                 self.server_config.unwrap_or_default(),
                 db_config,
@@ -391,6 +418,7 @@ mod tests {
             MintConfig {
                 privatekey: "TEST_PRIVATE_KEY".to_string(),
                 derivation_path: Some("0/0/0/0".to_string()),
+                ugx_derivation_path: Some("0/0/0/1".to_string()),
                 ..Default::default()
             },
             Default::default(),
@@ -411,10 +439,10 @@ mod tests {
             b_: dhke::public_key_from_hex(
                 "02634a2c2b34bec9e8a4aba4361f6bf202d7fa2365379b0840afe249a7a9d71239",
             ),
-            id: "00ffd48b8f5ecf80".to_owned(),
+            id: "00f4683f9caf8793".to_owned(),
         }];
 
-        let result = mint.create_blinded_signatures(&blinded_messages, &mint.keyset)?;
+        let result = mint.create_blinded_signatures(&blinded_messages)?;
 
         assert_eq!(1, result.len());
         assert_eq!(8, result[0].amount);
@@ -437,7 +465,7 @@ mod tests {
         .await?;
 
         let proofs = Proofs::empty();
-        let result = mint.swap(&proofs, &blinded_messages, &mint.keyset).await?;
+        let result = mint.swap(&proofs, &blinded_messages).await?;
 
         assert!(result.is_empty());
         Ok(())
@@ -452,9 +480,7 @@ mod tests {
         .await?;
         let request = read_fixture_as::<PostSwapRequest>("post_swap_request_64_20.json")?;
 
-        let result = mint
-            .swap(&request.inputs, &request.outputs, &mint.keyset)
-            .await?;
+        let result = mint.swap(&request.inputs, &request.outputs).await?;
         assert_eq!(result.total_amount(), 64);
 
         let prv_last = result.get(result.len() - 2).expect("element not found");
@@ -474,9 +500,7 @@ mod tests {
         .await?;
         let request = read_fixture_as::<PostSwapRequest>("post_swap_request_duplicate_key.json")?;
 
-        let result = mint
-            .swap(&request.inputs, &request.outputs, &mint.keyset)
-            .await;
+        let result = mint.swap(&request.inputs, &request.outputs).await;
         assert!(result.is_err());
         Ok(())
     }

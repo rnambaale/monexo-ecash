@@ -30,6 +30,7 @@ pub async fn main() -> anyhow::Result<()> {
     let MintConfig {
         privatekey,
         derivation_path,
+        ugx_derivation_path,
         info,
         server,
         btconchain_backend,
@@ -44,6 +45,7 @@ pub async fn main() -> anyhow::Result<()> {
         .with_mint_info(Some(info))
         .with_private_key(privatekey)
         .with_derivation_path(derivation_path)
+        .with_ugx_derivation_path(ugx_derivation_path)
         .with_db(Some(database))
         .with_btc_onchain(btconchain_backend)
         .with_tracing(tracing)
