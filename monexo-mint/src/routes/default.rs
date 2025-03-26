@@ -83,7 +83,7 @@ pub async fn get_info(State(mint): State<Mint>) -> Result<Json<MintInfoResponse>
         (status = 200, description = "get keys", body = [KeysResponse])
     )
 )]
-#[instrument(skip(mint), err)]
+#[instrument(name = "get_keys", skip(mint), err)]
 pub async fn get_keys(State(mint): State<Mint>) -> Result<Json<KeysResponse>, MonexoMintError> {
     Ok(Json(KeysResponse {
         keysets: vec![
@@ -108,7 +108,7 @@ pub async fn get_keys(State(mint): State<Mint>) -> Result<Json<KeysResponse>, Mo
         (status = 200, description = "get keysets", body = [Keysets])
     ),
 )]
-#[instrument(skip(mint), err)]
+#[instrument(name = "get_keysets", skip(mint), err)]
 pub async fn get_keysets(State(mint): State<Mint>) -> Result<Json<Keysets>, MonexoMintError> {
     Ok(Json(Keysets::new(vec![
         Keyset {
