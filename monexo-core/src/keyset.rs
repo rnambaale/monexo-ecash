@@ -27,45 +27,6 @@ use crate::{amount::Amount, error::MonexoCoreError, primitives::CurrencyUnit};
 
 const MAX_ORDER: u64 = 64;
 
-/// Mint Keyset Info
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MintKeySetInfo {
-    /// Keyset [`Id`]
-    pub id: String,
-
-    /// Keyset [`CurrencyUnit`]
-    pub unit: CurrencyUnit,
-
-    /// Keyset active or inactive
-    /// Mint will only issue new [`BlindSignature`] on active keysets
-    pub active: bool,
-
-    /// Starting unix time Keyset is valid from
-    pub valid_from: u64,
-
-    /// When the Keyset is valid to
-    /// This is not shown to the wallet and can only be used internally
-    pub valid_to: Option<u64>,
-
-    /// [`DerivationPath`] keyset
-    pub derivation_path: Option<String>,
-
-    /// DerivationPath index of Keyset
-    pub derivation_path_index: Option<i32>,
-
-    /// Max order of keyset
-    pub max_order: u8,
-
-    /// Input Fee ppk
-    #[serde(default = "default_fee")]
-    pub input_fee_ppk: u64,
-}
-
-/// Default fee
-pub fn default_fee() -> u64 {
-    0
-}
-
 #[derive(Debug, Clone)]
 pub struct MintKeyset {
     pub private_keys: HashMap<u64, SecretKey>,
@@ -126,17 +87,6 @@ pub struct MintKeyPair {
     pub secret_key: SecretKey,
 }
 
-// impl MintKeyPair {
-//     /// [`MintKeyPair`] from secret key
-//     #[inline]
-//     pub fn from_secret_key(secret_key: SecretKey) -> Self {
-//         Self {
-//             public_key: secret_key.public_key(),
-//             secret_key,
-//         }
-//     }
-// }
-
 // FIXME rename to keysets
 #[derive(Clone, Debug, Serialize, Deserialize, Default, ToSchema, PartialEq, Eq)]
 pub struct Keysets {
@@ -145,10 +95,7 @@ pub struct Keysets {
 
 impl Keysets {
     pub fn new(keysets: Vec<Keyset>) -> Self {
-        Self {
-            // keysets: vec![Keyset { id, unit, active }],
-            keysets,
-        }
+        Self { keysets }
     }
 
     pub fn current_keyset(
@@ -160,17 +107,6 @@ impl Keysets {
             Ok(computed_id)
         } else {
             Err(MonexoCoreError::InvalidKeysetid)
-        }
-    }
-}
-
-impl From<MintKeySetInfo> for Keyset {
-    fn from(keyset_info: MintKeySetInfo) -> Self {
-        Self {
-            id: keyset_info.id,
-            unit: keyset_info.unit,
-            active: keyset_info.active,
-            // input_fee_ppk: keyset_info.input_fee_ppk,
         }
     }
 }

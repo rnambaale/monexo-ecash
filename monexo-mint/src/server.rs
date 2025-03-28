@@ -3,7 +3,7 @@ use crate::routes::exchange::post_exchange;
 use monexo_core::blind::{BlindedMessage, BlindedSignature};
 use monexo_core::keyset::{Keyset, Keysets};
 use monexo_core::primitives::{
-    CurrencyUnit, MintInfoResponse, PostCurrencyExchangeQuoteRequest, PostCurrentExchangeResponse,
+    CurrencyUnit, MintInfoResponse, PostCurrencyExchangeRequest, PostCurrencyExchangeResponse,
     PostMeltBtcOnchainRequest, PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainRequest,
     PostMeltQuoteBtcOnchainResponse, PostMintQuoteBtcOnchainRequest,
     PostMintQuoteBtcOnchainResponse, PostSwapRequest, PostSwapResponse,
@@ -101,8 +101,8 @@ pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
         PostMeltBtcOnchainResponse,
         PostSwapRequest,
         PostSwapResponse,
-        PostCurrencyExchangeQuoteRequest,
-        PostCurrentExchangeResponse,
+        PostCurrencyExchangeRequest,
+        PostCurrencyExchangeResponse,
     ))
 )]
 struct ApiDoc;

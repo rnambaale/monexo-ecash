@@ -325,7 +325,7 @@ pub struct PostCheckStateResponse {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
-pub struct PostCurrencyExchangeQuoteRequest {
+pub struct PostCurrencyExchangeRequest {
     #[schema(example = "1500")]
     pub amount: u64,
     pub inputs: Proofs,
@@ -333,7 +333,7 @@ pub struct PostCurrencyExchangeQuoteRequest {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
-pub struct PostCurrentExchangeResponse {
+pub struct PostCurrencyExchangeResponse {
     pub signatures: Vec<BlindedSignature>,
 }
 
