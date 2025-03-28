@@ -324,6 +324,19 @@ pub struct PostCheckStateResponse {
     pub states: Vec<ProofStatus>,
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
+pub struct PostCurrencyExchangeQuoteRequest {
+    #[schema(example = "1500")]
+    pub amount: u64,
+    pub inputs: Proofs,
+    pub outputs: Vec<BlindedMessage>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
+pub struct PostCurrentExchangeResponse {
+    pub signatures: Vec<BlindedSignature>,
+}
+
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;

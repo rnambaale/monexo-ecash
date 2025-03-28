@@ -1,11 +1,12 @@
 use crate::mint::Mint;
+use crate::routes::exchange::post_exchange;
 use monexo_core::blind::{BlindedMessage, BlindedSignature};
 use monexo_core::keyset::{Keyset, Keysets};
 use monexo_core::primitives::{
-    CurrencyUnit, MintInfoResponse, PostMeltBtcOnchainRequest, PostMeltBtcOnchainResponse,
-    PostMeltQuoteBtcOnchainRequest, PostMeltQuoteBtcOnchainResponse,
-    PostMintQuoteBtcOnchainRequest, PostMintQuoteBtcOnchainResponse, PostSwapRequest,
-    PostSwapResponse,
+    CurrencyUnit, MintInfoResponse, PostCurrencyExchangeQuoteRequest, PostCurrentExchangeResponse,
+    PostMeltBtcOnchainRequest, PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainRequest,
+    PostMeltQuoteBtcOnchainResponse, PostMintQuoteBtcOnchainRequest,
+    PostMintQuoteBtcOnchainResponse, PostSwapRequest, PostSwapResponse,
 };
 use monexo_core::proof::{P2SHScript, Proof, Proofs};
 use tracing::info;
@@ -80,6 +81,7 @@ pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
         crate::routes::default::post_swap,
         crate::routes::default::get_info,
         crate::routes::default::get_keysets,
+        crate::routes::exchange::post_exchange,
     ),
     components(schemas(
         MintInfoResponse,
@@ -99,6 +101,8 @@ pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
         PostMeltBtcOnchainResponse,
         PostSwapRequest,
         PostSwapResponse,
+        PostCurrencyExchangeQuoteRequest,
+        PostCurrentExchangeResponse,
     ))
 )]
 struct ApiDoc;
@@ -116,6 +120,7 @@ fn app(mint: Mint) -> Router {
         // .route("/v1/melt/quote/bolt11/:quote", get(get_melt_quote_bolt11))
         // .route("/v1/melt/bolt11", post(post_melt_bolt11))
         .route("/v1/swap", post(post_swap))
+        .route("/v1/exchange", post(post_exchange))
         .route("/v1/checkstate", post(post_check_state))
         .route("/v1/info", get(get_info));
 

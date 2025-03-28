@@ -144,13 +144,7 @@ where
         let mut tx = self.db.begin_tx().await?;
         self.check_used_proofs(&mut tx, proofs).await?;
 
-        // TODO: How do we actually send USDC coins on Solana
-        // let send_response = self
-        //     .onchain
-        //     .as_ref()
-        //     .expect("onchain backend not set")
-        //     .send_coins(&quote.address, quote.amount, quote.fee_sat_per_vbyte)
-        //     .await?;
+        // TODO: Confirm valid mint signatures on all the proofs
 
         let amount_to_send = quote.amount - quote.fee_total;
         let send_response =
@@ -180,6 +174,8 @@ where
             return Err(MonexoMintError::SwapHasDuplicatePromises);
         }
 
+        // TODO: Confirm valid mint signatures on all the proofs
+
         let sum_proofs = proofs.total_amount();
 
         let promises = self.create_blinded_signatures(blinded_messages)?;
@@ -187,6 +183,38 @@ where
         if sum_proofs != amount_promises {
             return Err(MonexoMintError::SwapAmountMismatch(format!(
                 "Swap amount mismatch: {sum_proofs} != {amount_promises}"
+            )));
+        }
+
+        self.db.add_used_proofs(&mut tx, proofs).await?;
+        tx.commit().await?;
+        Ok(promises)
+    }
+
+    #[instrument(level = "debug", skip_all, err)]
+    pub async fn exchange(
+        &self,
+        amount_to_exchange: u64,
+        proofs: &Proofs,
+        blinded_messages: &[BlindedMessage],
+    ) -> Result<Vec<BlindedSignature>, MonexoMintError> {
+        let mut tx = self.db.begin_tx().await?;
+        self.check_used_proofs(&mut tx, proofs).await?;
+
+        if Self::has_duplicate_pubkeys(blinded_messages) {
+            return Err(MonexoMintError::SwapHasDuplicatePromises);
+        }
+
+        // TODO: Confirm valid mint signatures on all the proofs
+
+        let sum_proofs = proofs.total_amount();
+
+        let promises = self.create_blinded_signatures(blinded_messages)?;
+        // let amount_promises = promises.total_amount();
+        // TODO: fetch the current rate and use it to check that the sum on blinded messages adds up
+        if sum_proofs != amount_to_exchange {
+            return Err(MonexoMintError::SwapAmountMismatch(format!(
+                "Exchange amount mismatch: {sum_proofs} != {amount_to_exchange}"
             )));
         }
 
