@@ -13,13 +13,17 @@
 use hex::ToHex;
 use itertools::Itertools;
 use secp256k1::{PublicKey, Secp256k1, SecretKey};
-use std::{collections::HashMap, fmt::Display};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::Display,
+    ops::Deref,
+};
 
 use bitcoin_hashes::{sha256, Hash};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::{error::MonexoCoreError, primitives::CurrencyUnit};
+use crate::{amount::Amount, error::MonexoCoreError, primitives::CurrencyUnit};
 
 const MAX_ORDER: u64 = 64;
 
@@ -44,12 +48,6 @@ impl MintKeyset {
     }
 }
 
-// FIXME rename to keysets
-#[derive(Clone, Debug, Serialize, Deserialize, Default, ToSchema, PartialEq, Eq)]
-pub struct Keysets {
-    pub keysets: Vec<Keyset>,
-}
-
 // FIXME rename to keyset
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
 pub struct Keyset {
@@ -58,11 +56,46 @@ pub struct Keyset {
     pub active: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MintKeySet {
+    /// Keyset [`Id`]
+    pub id: String, // FIXME use KeysetId
+    /// Keyset [`CurrencyUnit`]
+    pub unit: CurrencyUnit,
+    /// Keyset [`MintKeys`]
+    pub keys: MintKeys,
+}
+
+/// Mint key pairs per amount
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MintKeys(BTreeMap<Amount, MintKeyPair>);
+
+impl Deref for MintKeys {
+    type Target = BTreeMap<Amount, MintKeyPair>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+/// Mint Public Private key pair
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MintKeyPair {
+    /// Publickey
+    pub public_key: PublicKey,
+    /// Secretkey
+    pub secret_key: SecretKey,
+}
+
+// FIXME rename to keysets
+#[derive(Clone, Debug, Serialize, Deserialize, Default, ToSchema, PartialEq, Eq)]
+pub struct Keysets {
+    pub keysets: Vec<Keyset>,
+}
+
 impl Keysets {
-    pub fn new(id: String, unit: CurrencyUnit, active: bool) -> Self {
-        Self {
-            keysets: vec![Keyset { id, unit, active }],
-        }
+    pub fn new(keysets: Vec<Keyset>) -> Self {
+        Self { keysets }
     }
 
     pub fn current_keyset(

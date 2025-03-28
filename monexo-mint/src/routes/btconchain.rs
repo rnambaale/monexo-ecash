@@ -165,16 +165,11 @@ pub async fn post_mint_btconchain(
     Json(request): Json<PostMintBtcOnchainRequest>,
 ) -> Result<Json<PostMintBtcOnchainResponse>, MonexoMintError> {
     // TODO Figure out the quote has been paid, only then do you mint the tokens
+    // TODO Check that the sum of secrets is equal to the quote.amount
 
     let mut tx = mint.db.begin_tx().await?;
     let signatures = mint
-        .mint_tokens(
-            &mut tx,
-            request.quote.clone(),
-            &request.outputs,
-            &mint.keyset,
-            false,
-        )
+        .mint_tokens(&mut tx, request.quote.clone(), &request.outputs, false)
         .await?;
 
     let old_quote = &mint

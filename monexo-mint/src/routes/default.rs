@@ -5,7 +5,7 @@ use axum::{
     Json,
 };
 use monexo_core::{
-    keyset::Keysets,
+    keyset::{Keyset, Keysets},
     primitives::{
         CurrencyUnit, KeyResponse, KeysResponse, MintInfoResponse, PostCheckStateRequest,
         PostCheckStateResponse, PostSwapRequest, PostSwapResponse, ProofState, ProofStatus,
@@ -35,7 +35,7 @@ pub async fn post_swap(
     Json(swap_request): Json<PostSwapRequest>,
 ) -> Result<Json<PostSwapResponse>, MonexoMintError> {
     let response = mint
-        .swap(&swap_request.inputs, &swap_request.outputs, &mint.keyset)
+        .swap(&swap_request.inputs, &swap_request.outputs)
         .await?;
 
     Ok(Json(PostSwapResponse {
@@ -83,14 +83,21 @@ pub async fn get_info(State(mint): State<Mint>) -> Result<Json<MintInfoResponse>
         (status = 200, description = "get keys", body = [KeysResponse])
     )
 )]
-#[instrument(skip(mint), err)]
+#[instrument(name = "get_keys", skip(mint), err)]
 pub async fn get_keys(State(mint): State<Mint>) -> Result<Json<KeysResponse>, MonexoMintError> {
     Ok(Json(KeysResponse {
-        keysets: vec![KeyResponse {
-            id: mint.keyset.keyset_id.clone(),
-            unit: CurrencyUnit::Usd,
-            keys: mint.keyset.public_keys,
-        }],
+        keysets: vec![
+            KeyResponse {
+                id: mint.keyset.keyset_id.clone(),
+                unit: CurrencyUnit::Usd,
+                keys: mint.keyset.public_keys.clone(),
+            },
+            KeyResponse {
+                id: mint.ugx_keyset.keyset_id.clone(),
+                unit: CurrencyUnit::Ugx,
+                keys: mint.ugx_keyset.public_keys.clone(),
+            },
+        ],
     }))
 }
 
@@ -101,13 +108,20 @@ pub async fn get_keys(State(mint): State<Mint>) -> Result<Json<KeysResponse>, Mo
         (status = 200, description = "get keysets", body = [Keysets])
     ),
 )]
-#[instrument(skip(mint), err)]
+#[instrument(name = "get_keysets", skip(mint), err)]
 pub async fn get_keysets(State(mint): State<Mint>) -> Result<Json<Keysets>, MonexoMintError> {
-    Ok(Json(Keysets::new(
-        mint.keyset.keyset_id,
-        CurrencyUnit::Usd,
-        true,
-    )))
+    Ok(Json(Keysets::new(vec![
+        Keyset {
+            id: mint.keyset.keyset_id,
+            unit: CurrencyUnit::Usd,
+            active: true,
+        },
+        Keyset {
+            id: mint.ugx_keyset.keyset_id,
+            unit: CurrencyUnit::Ugx,
+            active: true,
+        },
+    ])))
 }
 
 #[instrument(skip(mint), err)]
@@ -136,7 +150,7 @@ pub async fn get_keys_by_id(
         (status = 200, description = "post check state", body = [PostCheckStateResponse])
     ),
 )]
-#[instrument(name = "post_swap", skip(mint), err)]
+#[instrument(name = "post_check_state", skip(mint), err)]
 pub async fn post_check_state(
     State(mint): State<Mint>,
     Json(chek_state_request): Json<PostCheckStateRequest>,

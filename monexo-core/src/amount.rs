@@ -6,7 +6,10 @@
 //!
 //! Both the `Amount` and `SplitAmount` structs are serializable and deserializable using serde.
 
-#[derive(Debug, Clone)]
+use serde::{Deserialize, Serialize};
+
+// #[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Amount(pub u64);
 
 impl Amount {
@@ -18,6 +21,56 @@ impl Amount {
 impl From<u64> for Amount {
     fn from(amount: u64) -> Self {
         Self(amount)
+    }
+}
+
+impl AsRef<u64> for Amount {
+    fn as_ref(&self) -> &u64 {
+        &self.0
+    }
+}
+
+impl std::ops::Add for Amount {
+    type Output = Amount;
+
+    fn add(self, rhs: Amount) -> Self::Output {
+        Amount(self.0.checked_add(rhs.0).expect("Addition error"))
+    }
+}
+
+impl std::ops::AddAssign for Amount {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0 = self.0.checked_add(rhs.0).expect("Addition error");
+    }
+}
+
+impl std::ops::Sub for Amount {
+    type Output = Amount;
+
+    fn sub(self, rhs: Amount) -> Self::Output {
+        Amount(self.0 - rhs.0)
+    }
+}
+
+impl std::ops::SubAssign for Amount {
+    fn sub_assign(&mut self, other: Self) {
+        self.0 -= other.0;
+    }
+}
+
+impl std::ops::Mul for Amount {
+    type Output = Self;
+
+    fn mul(self, other: Self) -> Self::Output {
+        Amount(self.0 * other.0)
+    }
+}
+
+impl std::ops::Div for Amount {
+    type Output = Self;
+
+    fn div(self, other: Self) -> Self::Output {
+        Amount(self.0 / other.0)
     }
 }
 
