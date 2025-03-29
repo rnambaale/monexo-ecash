@@ -382,6 +382,10 @@ impl MintBuilder {
         let db = PostgresDB::new(&db_config).await?;
         db.migrate().await;
 
+        // let mut supported_units: HashMap<CurrencyUnit, (u64, u8)>;
+        // supported_units.insert(CurrencyUnit::Usd, (0, 32));
+        // supported_units.insert(CurrencyUnit::Ugx, (0, 32));
+
         Ok(Mint::new(
             db,
             MintConfig::new(
