@@ -38,6 +38,12 @@ pub async fn post_swap(
         .swap(&swap_request.inputs, &swap_request.outputs)
         .await?;
 
+    let mut tx = mint.db.begin_tx().await?;
+    mint.db
+        .add_blind_signatures(&mut tx, &swap_request.outputs, &response, None)
+        .await?;
+    tx.commit().await?;
+
     Ok(Json(PostSwapResponse {
         signatures: response,
     }))

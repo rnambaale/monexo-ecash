@@ -1,7 +1,7 @@
 use axum::{extract::State, Json};
 use monexo_core::primitives::{PostCurrencyExchangeRequest, PostCurrencyExchangeResponse};
 
-use crate::{error::MonexoMintError, mint::Mint};
+use crate::{database::Database, error::MonexoMintError, mint::Mint};
 use tracing::instrument;
 
 #[utoipa::path(
@@ -24,6 +24,12 @@ pub async fn post_exchange(
             &exchange_request.outputs,
         )
         .await?;
+
+    let mut tx = mint.db.begin_tx().await?;
+    mint.db
+        .add_blind_signatures(&mut tx, &exchange_request.outputs, &response, None)
+        .await?;
+    tx.commit().await?;
 
     Ok(Json(PostCurrencyExchangeResponse {
         signatures: response,

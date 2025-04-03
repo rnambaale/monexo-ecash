@@ -178,6 +178,15 @@ pub async fn post_mint_btconchain(
         .await?;
 
     mint.db
+        .add_blind_signatures(
+            &mut tx,
+            &request.outputs,
+            &signatures,
+            Some(request.quote.clone()),
+        )
+        .await?;
+
+    mint.db
         .update_onchain_mint_quote(
             &mut tx,
             &BtcOnchainMintQuote {

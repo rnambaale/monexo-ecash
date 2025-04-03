@@ -156,7 +156,8 @@ where
         Ok(send_response)
     }
 
-    fn has_duplicate_pubkeys(outputs: &[BlindedMessage]) -> bool {
+    /// CHeck if that the outputs to are not unique
+    pub fn has_duplicate_pubkeys(outputs: &[BlindedMessage]) -> bool {
         let mut uniq = HashSet::new();
         !outputs.iter().all(move |x| uniq.insert(x.b_))
     }
