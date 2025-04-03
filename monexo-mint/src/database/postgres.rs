@@ -3,6 +3,7 @@ use std::str::FromStr;
 use async_trait::async_trait;
 
 use monexo_core::{
+    blind::{BlindedMessage, BlindedSignature},
     dhke,
     primitives::{
         BtcOnchainMeltQuote, BtcOnchainMintQuote, MeltBtcOnchainState, MintBtcOnchainState,
@@ -213,6 +214,31 @@ impl Database for PostgresDB {
         )
         .execute(&mut **tx)
         .await?;
+        Ok(())
+    }
+
+    async fn add_blind_signatures(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+        blinded_messages: &[BlindedMessage],
+        blinded_signatures: &[BlindedSignature],
+        quote_id: Option<String>,
+    ) -> Result<(), MonexoMintError> {
+        for (message, signature) in blinded_messages.iter().zip(blinded_signatures) {
+            let b_message = message.b_.to_string();
+            let blinded_signature = signature.c_.to_string();
+
+            sqlx::query!(
+                "INSERT INTO blinded_signature (y, amount, keyset_id, c, quote_id) VALUES ($1, $2, $3, $4, $5)",
+                b_message.as_bytes(),
+                u64::from(signature.amount) as i64,
+                signature.id,
+                blinded_signature.as_bytes(),
+                quote_id
+            )
+            .execute(&mut **tx)
+            .await?;
+        }
         Ok(())
     }
 }
