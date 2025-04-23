@@ -101,28 +101,6 @@ pub async fn get_mint_quote_btconchain(
         .await?;
     tx.commit().await?;
 
-    // let min_confs = mint
-    //     .config
-    //     .btconchain_backend
-    //     .unwrap_or_default()
-    //     .min_confirmations;
-
-    // let paid = mint
-    //     .onchain
-    //     .as_ref()
-    //     .expect("onchain backend not configured")
-    //     .is_paid(&quote.address, quote.amount, min_confs)
-    //     .await?;
-
-    // FIXME compute correct state
-    // let state = match paid {
-    //     true => MintBtcOnchainState::Paid,
-    //     false => MintBtcOnchainState::Unpaid,
-    // };
-
-    // Extract and parse transaction logs
-    // let usdc_mint_address = Pubkey::from_str("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU").unwrap();
-
     let state = match quote.state {
         MintBtcOnchainState::Issued => quote.state,
         _ => {
@@ -221,19 +199,6 @@ pub async fn post_melt_quote_btconchain(
         )));
     }
 
-    // TODO Figure out how to get fees on solana
-    // let fee_response = mint
-    //     .onchain
-    //     .as_ref()
-    //     .expect("onchain backend not configured")
-    //     .estimate_fee(&address, amount)
-    //     .await?;
-
-    // let sender_keypair = Keypair::read_from_file("./../wallet.json").expect("Failed to load mint keypair");
-    // let sender_address = sender_keypair.try_pubkey().expect("Failed to load mint pubkey").to_string();
-    // let fee_response = get_estimated_fees(amount, &sender_address, &address).await?;
-
-    // info!("post_melt_quote_onchain fee_response: {:#?}", &fee_response);
     let reference = Keypair::new().pubkey().to_string();
 
     let quote = BtcOnchainMeltQuote {
@@ -245,7 +210,6 @@ pub async fn post_melt_quote_btconchain(
         fee_sat_per_vbyte: 0, //fee_response.sat_per_vbyte,
         expiry: quote_onchain_expiry(),
         state: MeltBtcOnchainState::Unpaid,
-        // description: Some(format!("{} sat per vbyte", fee_response.sat_per_vbyte)),
         description: None,
     };
 
@@ -556,9 +520,6 @@ async fn get_estimated_fees(
         &destination_address,
         &usdc_mint,
     );
-
-    // Amount and decimals
-    // let amount = amount * 1_000_000; // 1 USDC (6 decimal places)
 
     // Create `transfer_checked` instruction
     let transfer_ix = spl_token::instruction::transfer_checked(
