@@ -6,9 +6,8 @@ use monexo_core::{
     dhke::Dhke,
     keyset::KeysetId,
     primitives::{
-        CurrencyUnit, MeltBtcOnchainState, MintBtcOnchainState, MintInfoResponse,
-        PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainResponse,
-        PostMintQuoteBtcOnchainResponse,
+        CurrencyUnit, MeltOnchainState, MintInfoResponse, MintOnchainState,
+        PostMeltOnchainResponse, PostMeltQuoteOnchainResponse, PostMintQuoteOnchainResponse,
     },
     proof::{Proof, Proofs},
     token::TokenV3,
@@ -124,7 +123,7 @@ where
         &self,
         mint_url: &Url,
         amount: u64,
-    ) -> Result<PostMintQuoteBtcOnchainResponse, MonexoWalletError> {
+    ) -> Result<PostMintQuoteOnchainResponse, MonexoWalletError> {
         self.client.post_mint_quote_onchain(mint_url, amount).await
     }
 
@@ -138,7 +137,7 @@ where
                 .get_mint_quote_onchain(mint_url, quote)
                 .await?
                 .state,
-            MintBtcOnchainState::Paid | MintBtcOnchainState::Issued
+            MintOnchainState::Paid | MintOnchainState::Issued
         ))
     }
 
@@ -153,7 +152,7 @@ where
             .get_melt_quote_onchain(mint_url, quote)
             .await?
             .state
-            == MeltBtcOnchainState::Paid)
+            == MeltOnchainState::Paid)
     }
 
     pub async fn get_wallet_keysets(&self) -> Result<Vec<WalletKeyset>, MonexoWalletError> {
@@ -280,18 +279,18 @@ where
     //     mint_url: &Url,
     //     amount: Amount,
     //     currency: CurrencyUnit,
-    // ) -> Result<PostMintQuoteBolt11Response, MokshaWalletError> {
+    // ) -> Result<PostMintQuoteBolt11Response, MonexoWalletError> {
     //     self.client
     //         .post_mint_quote_bolt11(mint_url, amount.0, currency)
     //         .await
     // }
 
-    pub async fn get_melt_quote_btconchain(
+    pub async fn get_melt_quote_onchain(
         &self,
         mint_url: &Url,
         address: String,
         amount: u64,
-    ) -> Result<Vec<PostMeltQuoteBtcOnchainResponse>, MonexoWalletError> {
+    ) -> Result<Vec<PostMeltQuoteOnchainResponse>, MonexoWalletError> {
         self.client
             .post_melt_quote_onchain(mint_url, address, amount)
             .await
@@ -301,8 +300,8 @@ where
         &self,
         mint_url: &Url,
         wallet_keyset: &WalletKeyset,
-        melt_quote: &PostMeltQuoteBtcOnchainResponse,
-    ) -> Result<PostMeltBtcOnchainResponse, MonexoWalletError> {
+        melt_quote: &PostMeltQuoteOnchainResponse,
+    ) -> Result<PostMeltOnchainResponse, MonexoWalletError> {
         let mut tx = self.localstore.begin_tx().await?;
         let all_proofs = self.localstore.get_proofs(&mut tx).await?;
         tx.commit().await?;
@@ -335,7 +334,7 @@ where
             .post_melt_onchain(&mint_url, total_proofs.clone(), melt_quote.quote.clone())
             .await?;
 
-        if melt_response.state == MeltBtcOnchainState::Paid {
+        if melt_response.state == MeltOnchainState::Paid {
             self.localstore
                 .delete_proofs(&mut tx, &total_proofs)
                 .await?;
@@ -466,39 +465,6 @@ where
     ) -> Result<MintInfoResponse, MonexoWalletError> {
         self.client.get_info(mint_url).await
     }
-
-    // async fn melt_token(
-    //     &self,
-    //     mint_url: &Url,
-    //     quote_id: String,
-    //     proofs: &Proofs,
-    //     fee_blinded_messages: Vec<BlindedMessage>,
-    // ) -> Result<PostMeltBolt11Response, MokshaWalletError> {
-    //     let melt_response = self
-    //         .client
-    //         .post_melt_bolt11(mint_url, proofs.clone(), quote_id, fee_blinded_messages)
-    //         .await?;
-
-    //     if melt_response.paid {
-    //         let mut tx = self.localstore.begin_tx().await?;
-    //         self.localstore.delete_proofs(&mut tx, proofs).await?;
-    //         tx.commit().await?;
-    //     }
-    //     Ok(melt_response)
-    // }
-
-    // fn decode_invoice(payment_request: &str) -> Result<LNInvoice, MokshaWalletError> {
-    //     LNInvoice::from_str(payment_request)
-    //         .map_err(|err| MokshaWalletError::DecodeInvoice(payment_request.to_owned(), err))
-    // }
-
-    // fn get_invoice_amount(payment_request: &str) -> Result<u64, MokshaWalletError> {
-    //     let invoice = Self::decode_invoice(payment_request)?;
-    //     Ok(invoice
-    //         .amount_milli_satoshis()
-    //         .ok_or_else(|| MokshaWalletError::InvalidInvoice(payment_request.to_owned()))?
-    //         / 1000)
-    // }
 
     pub async fn mint_tokens(
         &self,
@@ -812,7 +778,7 @@ mod tests {
     // #[tokio::test]
     // async fn test_mint_tokens() -> anyhow::Result<()> {
     //     let mint_response =
-    //         read_fixture_as::<PostMintBtcOnchainResponse>("post_mint_response_20.json")?;
+    //         read_fixture_as::<PostMintOnchainResponse>("post_mint_response_20.json")?;
 
     //     let mut client = create_mock();
     //     client

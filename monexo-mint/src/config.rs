@@ -14,17 +14,10 @@ pub struct Opts {
     pub ugx_derivation_path: Option<String>,
     #[clap(flatten)]
     pub info: MintInfoConfig,
-    // #[clap(flatten)]
-    // pub lightning_fee: LightningFeeConfig,
     #[clap(flatten)]
     pub server: ServerConfig,
     #[clap(flatten)]
     pub database: DatabaseConfig,
-
-    // #[clap(long, env = "MINT_LIGHTNING_BACKEND")]
-    // pub lightning_backend: LightningTypeVariant,
-    // #[clap(long, env = "MINT_BTC_ONCHAIN_BACKEND")]
-    // pub btconchain_backend: Option<BtcOnchainTypeVariant>,
     #[clap(flatten)]
     pub tracing: Option<TracingConfig>,
 }
@@ -59,23 +52,21 @@ pub struct MintConfig {
     pub derivation_path: Option<String>,
     pub ugx_derivation_path: Option<String>,
     pub info: MintInfoConfig,
-    // pub lightning_fee: LightningFeeConfig,
     pub server: ServerConfig,
-    pub btconchain_backend: Option<BtcOnchainConfig>,
-    // pub lightning_backend: Option<LightningType>,
+    pub onchain_backend: Option<OnchainConfig>,
     pub tracing: Option<TracingConfig>,
     pub database: DatabaseConfig,
 }
 
-impl From<(Opts, BtcOnchainConfig)> for MintConfig {
-    fn from((opts, btc): (Opts, BtcOnchainConfig)) -> Self {
+impl From<(Opts, OnchainConfig)> for MintConfig {
+    fn from((opts, onchain_config): (Opts, OnchainConfig)) -> Self {
         Self {
             privatekey: opts.privatekey,
             derivation_path: opts.derivation_path,
             ugx_derivation_path: opts.ugx_derivation_path,
             info: opts.info,
             server: opts.server,
-            btconchain_backend: Some(btc),
+            onchain_backend: Some(onchain_config),
             tracing: opts.tracing,
             database: opts.database,
         }
@@ -86,17 +77,9 @@ impl MintConfig {
     pub fn read_config_with_defaults() -> Self {
         let opts: Opts = Opts::parse();
 
-        // let lightning = match opts.lightning_backend {
-        //     LightningTypeVariant::Lnd => LightningType::Lnd(LndLightningSettings::parse()),
-        //     LightningTypeVariant::Lnbits => LightningType::Lnbits(LnbitsLightningSettings::parse()),
-        //     LightningTypeVariant::Strike => LightningType::Strike(StrikeLightningSettings::parse()),
-        //     LightningTypeVariant::Alby => LightningType::Alby(AlbyLightningSettings::parse()),
-        //     LightningTypeVariant::Cln => LightningType::Cln(ClnLightningSettings::parse()),
-        // };
+        let onchain_config: OnchainConfig = OnchainConfig::parse();
 
-        let btc_onchain: BtcOnchainConfig = BtcOnchainConfig::parse();
-
-        (opts, btc_onchain).into()
+        (opts, onchain_config).into()
     }
 }
 
@@ -107,11 +90,9 @@ impl MintConfig {
         derivation_path: Option<String>,
         ugx_derivation_path: Option<String>,
         info: MintInfoConfig,
-        // lightning_fee: LightningFeeConfig,
         server: ServerConfig,
         database: DatabaseConfig,
-        btconchain_backend: Option<BtcOnchainConfig>,
-        // lightning_backend: Option<LightningType>,
+        onchain_backend: Option<OnchainConfig>,
         tracing: Option<TracingConfig>,
     ) -> Self {
         Self {
@@ -120,7 +101,7 @@ impl MintConfig {
             derivation_path,
             ugx_derivation_path,
             info,
-            btconchain_backend,
+            onchain_backend,
             database,
             tracing,
         }
@@ -128,30 +109,30 @@ impl MintConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Parser)]
-pub struct BtcOnchainConfig {
+pub struct OnchainConfig {
     #[clap(
         long,
         default_value_t = 1,
-        env = "MINT_BTC_ONCHAIN_BACKEND_MIN_CONFIRMATIONS"
+        env = "MINT_ONCHAIN_BACKEND_MIN_CONFIRMATIONS"
     )]
     pub min_confirmations: u8,
 
     #[clap(
         long,
         default_value_t = 10_000_000,
-        env = "MINT_BTC_ONCHAIN_BACKEND_MIN_AMOUNT"
+        env = "MINT_ONCHAIN_BACKEND_MIN_AMOUNT"
     )]
     pub min_amount: u64,
 
     #[clap(
         long,
         default_value_t = 1_000_000_000,
-        env = "MINT_BTC_ONCHAIN_BACKEND_MAX_AMOUNT"
+        env = "MINT_ONCHAIN_BACKEND_MAX_AMOUNT"
     )]
     pub max_amount: u64,
 }
 
-impl Default for BtcOnchainConfig {
+impl Default for OnchainConfig {
     fn default() -> Self {
         Self {
             min_confirmations: 1,

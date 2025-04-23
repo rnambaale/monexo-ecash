@@ -4,9 +4,7 @@ use async_trait::async_trait;
 
 use monexo_core::{
     dhke,
-    primitives::{
-        BtcOnchainMeltQuote, BtcOnchainMintQuote, MeltBtcOnchainState, MintBtcOnchainState,
-    },
+    primitives::{MeltOnchainState, MintOnchainState, OnchainMeltQuote, OnchainMintQuote},
     proof::{Proof, Proofs},
 };
 use sqlx::postgres::PgPoolOptions;
@@ -94,7 +92,7 @@ impl Database for PostgresDB {
     async fn add_onchain_mint_quote(
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
-        quote: &BtcOnchainMintQuote,
+        quote: &OnchainMintQuote,
     ) -> Result<(), MonexoMintError> {
         sqlx::query!(
             "INSERT INTO onchain_mint_quotes (id, reference, fee_total, amount, expiry, state) VALUES ($1, $2, $3, $4, $5, $6)",
@@ -115,17 +113,17 @@ impl Database for PostgresDB {
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
         key: &Uuid,
-    ) -> Result<BtcOnchainMintQuote, MonexoMintError> {
-        let quote: BtcOnchainMintQuote = sqlx::query!(
+    ) -> Result<OnchainMintQuote, MonexoMintError> {
+        let quote: OnchainMintQuote = sqlx::query!(
             "SELECT id, reference, fee_total, amount, expiry, state  FROM onchain_mint_quotes WHERE id = $1",
             key
         )
-        .map(|row| BtcOnchainMintQuote {
+        .map(|row| OnchainMintQuote {
             quote_id: row.id,
             reference: row.reference,
             fee_total: row.fee_total as u64,
             expiry: row.expiry as u64,
-            state: MintBtcOnchainState::from_str(&row.state).expect("invalid state in mint quote"),
+            state: MintOnchainState::from_str(&row.state).expect("invalid state in mint quote"),
             amount: row.amount as u64,
         })
         .fetch_one(&mut **tx)
@@ -138,7 +136,7 @@ impl Database for PostgresDB {
     async fn update_onchain_mint_quote(
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
-        quote: &BtcOnchainMintQuote,
+        quote: &OnchainMintQuote,
     ) -> Result<(), MonexoMintError> {
         sqlx::query!(
             "UPDATE onchain_mint_quotes SET state = $1 WHERE id = $2",
@@ -154,7 +152,7 @@ impl Database for PostgresDB {
     async fn add_onchain_melt_quote(
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
-        quote: &BtcOnchainMeltQuote,
+        quote: &OnchainMeltQuote,
     ) -> Result<(), MonexoMintError> {
         sqlx::query!(
             "INSERT INTO onchain_melt_quotes (id, amount, address, reference, fee_total, fee_sat_per_vbyte, expiry, state, description) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
@@ -178,12 +176,12 @@ impl Database for PostgresDB {
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
         key: &Uuid,
-    ) -> Result<BtcOnchainMeltQuote, MonexoMintError> {
-        let quote: BtcOnchainMeltQuote = sqlx::query!(
+    ) -> Result<OnchainMeltQuote, MonexoMintError> {
+        let quote: OnchainMeltQuote = sqlx::query!(
             "SELECT id, amount,address, reference, fee_total, fee_sat_per_vbyte, expiry, state, description  FROM onchain_melt_quotes WHERE id = $1",
             key
         )
-        .map(|row| BtcOnchainMeltQuote {
+        .map(|row| OnchainMeltQuote {
             quote_id: row.id,
             address: row.address,
             reference: row.reference,
@@ -191,7 +189,7 @@ impl Database for PostgresDB {
             fee_total: row.fee_total as u64,
             fee_sat_per_vbyte: row.fee_sat_per_vbyte as u32,
             expiry: row.expiry as u64,
-            state: MeltBtcOnchainState::from_str(&row.state).expect("invalid state in melt quote"),
+            state: MeltOnchainState::from_str(&row.state).expect("invalid state in melt quote"),
             description: row.description
         })
         .fetch_one(&mut **tx)
@@ -204,7 +202,7 @@ impl Database for PostgresDB {
     async fn update_onchain_melt_quote(
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
-        quote: &BtcOnchainMeltQuote,
+        quote: &OnchainMeltQuote,
     ) -> Result<(), MonexoMintError> {
         sqlx::query!(
             "UPDATE onchain_melt_quotes SET state = $1 WHERE id = $2",

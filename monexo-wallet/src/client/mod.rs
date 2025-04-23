@@ -8,9 +8,8 @@ use monexo_core::{
     blind::BlindedMessage,
     keyset::Keysets,
     primitives::{
-        KeysResponse, MintInfoResponse, PostMeltBtcOnchainResponse,
-        PostMeltQuoteBtcOnchainResponse, PostMintBtcOnchainResponse,
-        PostMintQuoteBtcOnchainResponse, PostSwapResponse,
+        KeysResponse, MintInfoResponse, PostMeltOnchainResponse, PostMeltQuoteOnchainResponse,
+        PostMintOnchainResponse, PostMintQuoteOnchainResponse, PostSwapResponse,
     },
     proof::Proofs,
 };
@@ -43,39 +42,39 @@ pub trait CashuClient {
         mint_url: &Url,
         quote: String,
         blinded_messages: Vec<BlindedMessage>,
-    ) -> Result<PostMintBtcOnchainResponse, MonexoWalletError>;
+    ) -> Result<PostMintOnchainResponse, MonexoWalletError>;
 
     async fn post_mint_quote_onchain(
         &self,
         mint_url: &Url,
         amount: u64,
-    ) -> Result<PostMintQuoteBtcOnchainResponse, MonexoWalletError>;
+    ) -> Result<PostMintQuoteOnchainResponse, MonexoWalletError>;
 
     async fn get_mint_quote_onchain(
         &self,
         mint_url: &Url,
         quote: String,
-    ) -> Result<PostMintQuoteBtcOnchainResponse, MonexoWalletError>;
+    ) -> Result<PostMintQuoteOnchainResponse, MonexoWalletError>;
 
     async fn post_melt_onchain(
         &self,
         mint_url: &Url,
         proofs: Proofs,
         quote: String,
-    ) -> Result<PostMeltBtcOnchainResponse, MonexoWalletError>;
+    ) -> Result<PostMeltOnchainResponse, MonexoWalletError>;
 
     async fn post_melt_quote_onchain(
         &self,
         mint_url: &Url,
         address: String,
         amount: u64,
-    ) -> Result<Vec<PostMeltQuoteBtcOnchainResponse>, MonexoWalletError>;
+    ) -> Result<Vec<PostMeltQuoteOnchainResponse>, MonexoWalletError>;
 
     async fn get_melt_quote_onchain(
         &self,
         mint_url: &Url,
         quote: String,
-    ) -> Result<PostMeltQuoteBtcOnchainResponse, MonexoWalletError>;
+    ) -> Result<PostMeltQuoteOnchainResponse, MonexoWalletError>;
 
     async fn get_info(&self, mint_url: &Url) -> Result<MintInfoResponse, MonexoWalletError>;
 

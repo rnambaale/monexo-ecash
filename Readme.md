@@ -3,10 +3,10 @@
 <!-- [![Dependency status](https://deps.rs/repo/github/rnambaale/monexo-ecash/status.svg)](https://deps.rs/repo/github/rnambaale/monexo-ecash) -->
 
 ---
-sqlx database drop --database-url postgres://postgres:password@localhost:5432/moksha-mint
-sqlx database create --database-url postgres://postgres:password@localhost:5432/moksha-mint
-sqlx migrate run --database-url postgres://postgres:password@localhost:5432/moksha-mint
-cargo sqlx prepare --database-url postgres://postgres:password@localhost:5432/moksha-mint
+sqlx database drop --database-url postgres://postgres:password@localhost:5432/monexo-mint
+sqlx database create --database-url postgres://postgres:password@localhost:5432/monexo-mint
+sqlx migrate run --database-url postgres://postgres:password@localhost:5432/monexo-mint
+cargo sqlx prepare --database-url postgres://postgres:password@localhost:5432/monexo-mint
 
 ## Running the mint
 

@@ -48,7 +48,7 @@ pub async fn get_mints_with_balance(
 
     let keysets = wallet.get_wallet_keysets().await?;
     if keysets.is_empty() {
-        println!("No mints found. Add a mint first with 'moksha-cli add-mint <mint-url>'");
+        println!("No mints found. Add a mint first with 'monexo-cli add-mint <mint-url>'");
         exit(0)
     }
     Ok(keysets

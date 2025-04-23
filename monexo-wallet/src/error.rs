@@ -45,8 +45,8 @@ pub enum MonexoWalletError {
     #[error("Secp256k1 {0}")]
     Secp256k1(#[from] secp256k1::Error),
 
-    #[error("MokshaCoreError - {0}")]
-    MokshaCore(#[from] monexo_core::error::MonexoCoreError),
+    #[error("MonexoCoreError - {0}")]
+    MonexoCore(#[from] monexo_core::error::MonexoCoreError),
 
     #[error("Utf8 Error {0}")]
     Utf8(#[from] FromUtf8Error),
