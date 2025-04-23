@@ -56,7 +56,7 @@ impl CashuClient for CrossPlatformHttpClient {
             quote,
             outputs: blinded_messages,
         };
-        self.do_post(&mint_url.join("v1/mint/onchain")?, &body)
+        self.do_post(&mint_url.join("v1/mint/btconchain")?, &body)
             .await
     }
 
@@ -66,7 +66,7 @@ impl CashuClient for CrossPlatformHttpClient {
         amount: u64,
     ) -> Result<PostMintQuoteOnchainResponse, MonexoWalletError> {
         let body = PostMintQuoteOnchainRequest { amount };
-        self.do_post(&mint_url.join("v1/mint/quote/onchain")?, &body)
+        self.do_post(&mint_url.join("v1/mint/quote/btconchain")?, &body)
             .await
     }
 
@@ -75,7 +75,7 @@ impl CashuClient for CrossPlatformHttpClient {
         mint_url: &Url,
         quote: String,
     ) -> Result<PostMintQuoteOnchainResponse, MonexoWalletError> {
-        self.do_get(&mint_url.join(&format!("v1/mint/quote/onchain/{}", quote))?)
+        self.do_get(&mint_url.join(&format!("v1/mint/quote/btconchain/{}", quote))?)
             .await
     }
 
@@ -86,7 +86,7 @@ impl CashuClient for CrossPlatformHttpClient {
         quote: String,
     ) -> Result<PostMeltOnchainResponse, MonexoWalletError> {
         let body = PostMeltOnchainRequest { quote, inputs };
-        self.do_post(&mint_url.join("v1/melt/onchain")?, &body)
+        self.do_post(&mint_url.join("v1/melt/btconchain")?, &body)
             .await
     }
 
@@ -97,7 +97,7 @@ impl CashuClient for CrossPlatformHttpClient {
         amount: u64,
     ) -> Result<Vec<PostMeltQuoteOnchainResponse>, MonexoWalletError> {
         let body = PostMeltQuoteOnchainRequest { address, amount };
-        self.do_post(&mint_url.join("v1/melt/quote/onchain")?, &body)
+        self.do_post(&mint_url.join("v1/melt/quote/btconchain")?, &body)
             .await
     }
 
@@ -106,7 +106,7 @@ impl CashuClient for CrossPlatformHttpClient {
         mint_url: &Url,
         quote: String,
     ) -> Result<PostMeltQuoteOnchainResponse, MonexoWalletError> {
-        self.do_get(&mint_url.join(&format!("/v1/melt/quote/onchain/{quote}"))?)
+        self.do_get(&mint_url.join(&format!("/v1/melt/quote/btconchain/{quote}"))?)
             .await
     }
 

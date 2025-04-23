@@ -117,12 +117,18 @@ fn app(mint: Mint) -> Router {
 
     let onchain_routes = {
         Router::new()
-            .route("/v1/mint/quote/onchain", post(post_mint_quote_onchain))
-            .route("/v1/mint/quote/onchain/:quote", get(get_mint_quote_onchain))
-            .route("/v1/mint/onchain", post(post_mint_onchain))
-            .route("/v1/melt/quote/onchain", post(post_melt_quote_onchain))
-            .route("/v1/melt/quote/onchain/:quote", get(get_melt_quote_onchain))
-            .route("/v1/melt/onchain", post(post_melt_onchain))
+            .route("/v1/mint/quote/btconchain", post(post_mint_quote_onchain))
+            .route(
+                "/v1/mint/quote/btconchain/:quote",
+                get(get_mint_quote_onchain),
+            )
+            .route("/v1/mint/btconchain", post(post_mint_onchain))
+            .route("/v1/melt/quote/btconchain", post(post_melt_quote_onchain))
+            .route(
+                "/v1/melt/quote/btconchain/:quote",
+                get(get_melt_quote_onchain),
+            )
+            .route("/v1/melt/btconchain", post(post_melt_onchain))
     };
 
     let general_routes = Router::new().route("/health", get(get_health));

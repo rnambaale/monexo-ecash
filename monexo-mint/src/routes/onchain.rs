@@ -31,13 +31,13 @@ use crate::{database::Database, error::MonexoMintError, mint::Mint};
 
 #[utoipa::path(
     post,
-    path = "/v1/mint/quote/onchain",
+    path = "/v1/mint/quote/btconchain",
     request_body = PostMintQuoteOnchainRequest,
     responses(
         (status = 200, description = "post mint quote", body = [PostMintQuoteOnchainResponse])
     ),
 )]
-#[instrument(name = "post_mint_quote_onchain", skip(mint), err)]
+#[instrument(name = "post_mint_quote_btconchain", skip(mint), err)]
 pub async fn post_mint_quote_onchain(
     State(mint): State<Mint>,
     Json(request): Json<PostMintQuoteOnchainRequest>,
@@ -79,7 +79,7 @@ pub async fn post_mint_quote_onchain(
 
 #[utoipa::path(
     get,
-    path = "/v1/mint/quote/onchain/{quote_id}",
+    path = "/v1/mint/quote/btconchain/{quote_id}",
     responses(
         (status = 200, description = "get mint quote by id", body = [PostMintQuoteOnchainResponse])
     ),
@@ -87,7 +87,7 @@ pub async fn post_mint_quote_onchain(
         ("quote_id" = String, Path, description = "quote id"),
     )
 )]
-#[instrument(name = "get_mint_quote_onchain", skip(mint), err)]
+#[instrument(name = "get_mint_quote_btconchain", skip(mint), err)]
 pub async fn get_mint_quote_onchain(
     Path(quote_id): Path<String>,
     State(mint): State<Mint>,
@@ -131,13 +131,13 @@ pub async fn get_mint_quote_onchain(
 
 #[utoipa::path(
     post,
-    path = "/v1/mint/onchain",
+    path = "/v1/mint/btconchain",
     request_body = PostMintOnchainRequest,
     responses(
         (status = 200, description = "post mint", body = [PostMintOnchainResponse])
     ),
 )]
-#[instrument(name = "post_mint_onchain", skip(mint), err)]
+#[instrument(name = "post_mint_btconchain", skip(mint), err)]
 pub async fn post_mint_onchain(
     State(mint): State<Mint>,
     Json(request): Json<PostMintOnchainRequest>,
@@ -170,13 +170,13 @@ pub async fn post_mint_onchain(
 
 #[utoipa::path(
     post,
-    path = "/v1/melt/quote/onchain",
+    path = "/v1/melt/quote/btconchain",
     request_body = PostMeltQuoteOnchainRequest,
     responses(
         (status = 200, description = "post melt quote", body = [Vec<PostMeltQuoteOnchainResponse>])
     ),
 )]
-#[instrument(name = "post_melt_quote_onchain", skip(mint), err)]
+#[instrument(name = "post_melt_quote_btconchain", skip(mint), err)]
 pub async fn post_melt_quote_onchain(
     State(mint): State<Mint>,
     Json(melt_request): Json<PostMeltQuoteOnchainRequest>,
@@ -222,7 +222,7 @@ pub async fn post_melt_quote_onchain(
 
 #[utoipa::path(
     get,
-    path = "/v1/melt/quote/onchain/{quote_id}",
+    path = "/v1/melt/quote/btconchain/{quote_id}",
     responses(
         (status = 200, description = "post mint quote", body = [PostMeltQuoteOnchainResponse])
     ),
@@ -230,7 +230,7 @@ pub async fn post_melt_quote_onchain(
         ("quote_id" = String, Path, description = "quote id"),
     )
 )]
-#[instrument(name = "get_melt_quote_onchain", skip(mint), err)]
+#[instrument(name = "get_melt_quote_btconchain", skip(mint), err)]
 pub async fn get_melt_quote_onchain(
     Path(quote_id): Path<String>,
     State(mint): State<Mint>,
@@ -266,13 +266,13 @@ pub async fn get_melt_quote_onchain(
 
 #[utoipa::path(
     post,
-    path = "/v1/melt/onchain",
+    path = "/v1/melt/btconchain",
     request_body = PostMeltOnchainRequest,
     responses(
         (status = 200, description = "post melt", body = [PostMeltOnchainResponse])
     ),
 )]
-#[instrument(name = "post_melt_onchain", skip(mint), err)]
+#[instrument(name = "post_melt_btconchain", skip(mint), err)]
 pub async fn post_melt_onchain(
     State(mint): State<Mint>,
     Json(melt_request): Json<PostMeltOnchainRequest>,
