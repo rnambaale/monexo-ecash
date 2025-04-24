@@ -23,7 +23,7 @@ pub fn db_path() -> String {
             .expect("home dir is invalid")
             .to_owned();
         // in a sandboxed environment on mac the path looks like
-        // /Users/$USER_NAME/Library/Containers/..... so we have are just ising the first 2 parts
+        // /Users/$USER_NAME/Library/Containers/..... so we need just the first 2 parts
         let home = home
             .split('/')
             .take(3)
@@ -35,7 +35,7 @@ pub fn db_path() -> String {
             create_dir(std::path::Path::new(&monexo_dir)).expect("failed to create .monexo dir");
         }
 
-        format!("{monexo_dir}/wallet2.db")
+        format!("{monexo_dir}/wallet.db")
     })
 }
 
@@ -46,16 +46,16 @@ pub fn config_dir() -> PathBuf {
         .expect("home dir is invalid")
         .to_owned();
     // in a sandboxed environment on mac the path looks like
-    // /Users/$USER_NAME/Library/Containers/..... so we have are just ising the first 2 parts
+    // /Users/$USER_NAME/Library/Containers/..... so we need just the first 2 parts
     let home = home
         .split('/')
         .take(3)
         .collect::<Vec<&str>>()
         .join(std::path::MAIN_SEPARATOR_STR);
-    let moksha_dir = format!("{}{}.moksha", home, std::path::MAIN_SEPARATOR);
+    let monexo_dir = format!("{}{}.monexo", home, std::path::MAIN_SEPARATOR);
 
-    if !std::path::Path::new(&moksha_dir).exists() {
-        create_dir(std::path::Path::new(&moksha_dir)).expect("failed to create .moksha dir");
+    if !std::path::Path::new(&monexo_dir).exists() {
+        create_dir(std::path::Path::new(&monexo_dir)).expect("failed to create .monexo dir");
     }
-    PathBuf::from(moksha_dir)
+    PathBuf::from(monexo_dir)
 }

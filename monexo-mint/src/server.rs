@@ -4,9 +4,9 @@ use monexo_core::blind::{BlindedMessage, BlindedSignature};
 use monexo_core::keyset::{Keyset, Keysets};
 use monexo_core::primitives::{
     CurrencyUnit, MintInfoResponse, PostCurrencyExchangeRequest, PostCurrencyExchangeResponse,
-    PostMeltBtcOnchainRequest, PostMeltBtcOnchainResponse, PostMeltQuoteBtcOnchainRequest,
-    PostMeltQuoteBtcOnchainResponse, PostMintQuoteBtcOnchainRequest,
-    PostMintQuoteBtcOnchainResponse, PostSwapRequest, PostSwapResponse,
+    PostMeltOnchainRequest, PostMeltOnchainResponse, PostMeltQuoteOnchainRequest,
+    PostMeltQuoteOnchainResponse, PostMintQuoteOnchainRequest, PostMintQuoteOnchainResponse,
+    PostSwapRequest, PostSwapResponse,
 };
 use monexo_core::proof::{P2SHScript, Proof, Proofs};
 use tracing::info;
@@ -20,12 +20,12 @@ use tower_http::cors::{Any, CorsLayer};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::routes::btconchain::{
-    get_melt_quote_btconchain, get_mint_quote_btconchain, post_melt_btconchain,
-    post_melt_quote_btconchain, post_mint_btconchain, post_mint_quote_btconchain,
-};
 use crate::routes::default::{
     get_info, get_keys, get_keys_by_id, get_keysets, post_check_state, post_swap,
+};
+use crate::routes::onchain::{
+    get_melt_quote_onchain, get_mint_quote_onchain, post_melt_onchain, post_melt_quote_onchain,
+    post_mint_onchain, post_mint_quote_onchain,
 };
 
 pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
@@ -39,15 +39,12 @@ pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
 
     info!("listening on: {}", &mint.config.server.host_port);
 
-    if let Some(ref onchain) = mint.config.btconchain_backend {
-        info!(
-            "btconchain-min-confirmations: {}",
-            onchain.min_confirmations
-        );
-        info!("btconchain-min-amount: {}", onchain.min_amount);
-        info!("btconchain-max-amount: {}", onchain.max_amount);
+    if let Some(ref onchain) = mint.config.onchain_backend {
+        info!("onchain-min-confirmations: {}", onchain.min_confirmations);
+        info!("onchain-min-amount: {}", onchain.min_amount);
+        info!("onchain-max-amount: {}", onchain.max_amount);
     } else {
-        info!("btconchain-backend is not configured");
+        info!("onchain-backend is not configured");
     }
 
     let listener = tokio::net::TcpListener::bind(&mint.config.server.host_port).await?;
@@ -72,12 +69,12 @@ pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        crate::routes::btconchain::post_mint_quote_btconchain,
-        crate::routes::btconchain::get_mint_quote_btconchain,
-        crate::routes::btconchain::post_mint_btconchain,
-        crate::routes::btconchain::post_melt_quote_btconchain,
-        crate::routes::btconchain::get_melt_quote_btconchain,
-        crate::routes::btconchain::post_melt_btconchain,
+        crate::routes::onchain::post_mint_quote_onchain,
+        crate::routes::onchain::get_mint_quote_onchain,
+        crate::routes::onchain::post_mint_onchain,
+        crate::routes::onchain::post_melt_quote_onchain,
+        crate::routes::onchain::get_melt_quote_onchain,
+        crate::routes::onchain::post_melt_onchain,
         crate::routes::default::post_swap,
         crate::routes::default::get_info,
         crate::routes::default::get_keysets,
@@ -93,12 +90,12 @@ pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
         Proof,
         Proofs,
         P2SHScript,
-        PostMintQuoteBtcOnchainRequest,
-        PostMintQuoteBtcOnchainResponse,
-        PostMeltQuoteBtcOnchainRequest,
-        PostMeltQuoteBtcOnchainResponse,
-        PostMeltBtcOnchainRequest,
-        PostMeltBtcOnchainResponse,
+        PostMintQuoteOnchainRequest,
+        PostMintQuoteOnchainResponse,
+        PostMeltQuoteOnchainRequest,
+        PostMeltQuoteOnchainResponse,
+        PostMeltOnchainRequest,
+        PostMeltOnchainResponse,
         PostSwapRequest,
         PostSwapResponse,
         PostCurrencyExchangeRequest,
@@ -113,37 +110,25 @@ fn app(mint: Mint) -> Router {
         .route("/v1/keys", get(get_keys))
         .route("/v1/keys/:id", get(get_keys_by_id))
         .route("/v1/keysets", get(get_keysets))
-        // .route("/v1/mint/quote/bolt11", post(post_mint_quote_bolt11))
-        // .route("/v1/mint/quote/bolt11/:quote", get(get_mint_quote_bolt11))
-        // .route("/v1/mint/bolt11", post(post_mint_bolt11))
-        // .route("/v1/melt/quote/bolt11", post(post_melt_quote_bolt11))
-        // .route("/v1/melt/quote/bolt11/:quote", get(get_melt_quote_bolt11))
-        // .route("/v1/melt/bolt11", post(post_melt_bolt11))
         .route("/v1/swap", post(post_swap))
         .route("/v1/exchange", post(post_exchange))
         .route("/v1/checkstate", post(post_check_state))
         .route("/v1/info", get(get_info));
 
-    let btconchain_routes = {
+    let onchain_routes = {
         Router::new()
-            .route(
-                "/v1/mint/quote/btconchain",
-                post(post_mint_quote_btconchain),
-            )
+            .route("/v1/mint/quote/btconchain", post(post_mint_quote_onchain))
             .route(
                 "/v1/mint/quote/btconchain/:quote",
-                get(get_mint_quote_btconchain),
+                get(get_mint_quote_onchain),
             )
-            .route("/v1/mint/btconchain", post(post_mint_btconchain))
-            .route(
-                "/v1/melt/quote/btconchain",
-                post(post_melt_quote_btconchain),
-            )
+            .route("/v1/mint/btconchain", post(post_mint_onchain))
+            .route("/v1/melt/quote/btconchain", post(post_melt_quote_onchain))
             .route(
                 "/v1/melt/quote/btconchain/:quote",
-                get(get_melt_quote_btconchain),
+                get(get_melt_quote_onchain),
             )
-            .route("/v1/melt/btconchain", post(post_melt_btconchain))
+            .route("/v1/melt/btconchain", post(post_melt_onchain))
     };
 
     let general_routes = Router::new().route("/health", get(get_health));
@@ -153,7 +138,7 @@ fn app(mint: Mint) -> Router {
 
     let router = Router::new()
         .nest(&prefix, default_routes)
-        .nest(&prefix, btconchain_routes)
+        .nest(&prefix, onchain_routes)
         .nest("", general_routes)
         .with_state(mint);
 

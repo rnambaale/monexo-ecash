@@ -2,9 +2,7 @@ use clap::{Parser, Subcommand};
 use console::{style, Term};
 use dialoguer::Confirm;
 use monexo_core::{
-    primitives::{
-        MeltBtcOnchainState, PostMeltBtcOnchainResponse, PostMintQuoteBtcOnchainResponse,
-    },
+    primitives::{MeltOnchainState, PostMeltOnchainResponse, PostMintQuoteOnchainResponse},
     token::TokenV3,
 };
 use monexo_wallet::{http::CrossPlatformHttpClient, localstore::WalletKeysetFilter};
@@ -114,7 +112,7 @@ async fn main() -> anyhow::Result<()> {
                     return Ok(());
                 }
 
-                let PostMintQuoteBtcOnchainResponse {
+                let PostMintQuoteOnchainResponse {
                     reference,
                     quote,
                     fee,
@@ -261,7 +259,7 @@ async fn main() -> anyhow::Result<()> {
             let wallet_keyset = wallet_keysets.get_active().expect("no active keyset found");
 
             let quotes = wallet
-                .get_melt_quote_btconchain(&mint_url, address.clone(), amount)
+                .get_melt_quote_onchain(&mint_url, address.clone(), amount)
                 .await?;
 
             if quotes.is_empty() {
@@ -285,7 +283,7 @@ async fn main() -> anyhow::Result<()> {
                 return Ok(());
             }
 
-            let PostMeltBtcOnchainResponse { state, txid } =
+            let PostMeltOnchainResponse { state, txid } =
                 wallet.pay_onchain(&mint_url, wallet_keyset, quote).await?;
 
             if let Some(txid) = txid.clone() {
@@ -299,7 +297,7 @@ async fn main() -> anyhow::Result<()> {
                 tokio::time::sleep(std::time::Duration::from_millis(2_000)).await;
 
                 // FIXME
-                if state == MeltBtcOnchainState::Paid
+                if state == MeltOnchainState::Paid
                     || wallet
                         .is_onchain_paid(&mint_url, quote.quote.clone())
                         .await?

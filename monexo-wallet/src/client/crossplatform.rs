@@ -3,10 +3,10 @@ use monexo_core::{
     blind::BlindedMessage,
     keyset::Keysets,
     primitives::{
-        KeysResponse, MintInfoResponse, PostMeltBtcOnchainRequest, PostMeltBtcOnchainResponse,
-        PostMeltQuoteBtcOnchainRequest, PostMeltQuoteBtcOnchainResponse, PostMintBtcOnchainRequest,
-        PostMintBtcOnchainResponse, PostMintQuoteBtcOnchainRequest,
-        PostMintQuoteBtcOnchainResponse, PostSwapRequest, PostSwapResponse,
+        KeysResponse, MintInfoResponse, PostMeltOnchainRequest, PostMeltOnchainResponse,
+        PostMeltQuoteOnchainRequest, PostMeltQuoteOnchainResponse, PostMintOnchainRequest,
+        PostMintOnchainResponse, PostMintQuoteOnchainRequest, PostMintQuoteOnchainResponse,
+        PostSwapRequest, PostSwapResponse,
     },
     proof::Proofs,
 };
@@ -51,8 +51,8 @@ impl CashuClient for CrossPlatformHttpClient {
         mint_url: &Url,
         quote: String,
         blinded_messages: Vec<BlindedMessage>,
-    ) -> Result<PostMintBtcOnchainResponse, MonexoWalletError> {
-        let body = PostMintBtcOnchainRequest {
+    ) -> Result<PostMintOnchainResponse, MonexoWalletError> {
+        let body = PostMintOnchainRequest {
             quote,
             outputs: blinded_messages,
         };
@@ -64,8 +64,8 @@ impl CashuClient for CrossPlatformHttpClient {
         &self,
         mint_url: &Url,
         amount: u64,
-    ) -> Result<PostMintQuoteBtcOnchainResponse, MonexoWalletError> {
-        let body = PostMintQuoteBtcOnchainRequest { amount };
+    ) -> Result<PostMintQuoteOnchainResponse, MonexoWalletError> {
+        let body = PostMintQuoteOnchainRequest { amount };
         self.do_post(&mint_url.join("v1/mint/quote/btconchain")?, &body)
             .await
     }
@@ -74,7 +74,7 @@ impl CashuClient for CrossPlatformHttpClient {
         &self,
         mint_url: &Url,
         quote: String,
-    ) -> Result<PostMintQuoteBtcOnchainResponse, MonexoWalletError> {
+    ) -> Result<PostMintQuoteOnchainResponse, MonexoWalletError> {
         self.do_get(&mint_url.join(&format!("v1/mint/quote/btconchain/{}", quote))?)
             .await
     }
@@ -84,8 +84,8 @@ impl CashuClient for CrossPlatformHttpClient {
         mint_url: &Url,
         inputs: Proofs,
         quote: String,
-    ) -> Result<PostMeltBtcOnchainResponse, MonexoWalletError> {
-        let body = PostMeltBtcOnchainRequest { quote, inputs };
+    ) -> Result<PostMeltOnchainResponse, MonexoWalletError> {
+        let body = PostMeltOnchainRequest { quote, inputs };
         self.do_post(&mint_url.join("v1/melt/btconchain")?, &body)
             .await
     }
@@ -95,8 +95,8 @@ impl CashuClient for CrossPlatformHttpClient {
         mint_url: &Url,
         address: String,
         amount: u64,
-    ) -> Result<Vec<PostMeltQuoteBtcOnchainResponse>, MonexoWalletError> {
-        let body = PostMeltQuoteBtcOnchainRequest { address, amount };
+    ) -> Result<Vec<PostMeltQuoteOnchainResponse>, MonexoWalletError> {
+        let body = PostMeltQuoteOnchainRequest { address, amount };
         self.do_post(&mint_url.join("v1/melt/quote/btconchain")?, &body)
             .await
     }
@@ -105,7 +105,7 @@ impl CashuClient for CrossPlatformHttpClient {
         &self,
         mint_url: &Url,
         quote: String,
-    ) -> Result<PostMeltQuoteBtcOnchainResponse, MonexoWalletError> {
+    ) -> Result<PostMeltQuoteOnchainResponse, MonexoWalletError> {
         self.do_get(&mint_url.join(&format!("/v1/melt/quote/btconchain/{quote}"))?)
             .await
     }

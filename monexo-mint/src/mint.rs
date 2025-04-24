@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::{
     config::{
-        BtcOnchainConfig, BuildParams, DatabaseConfig, MintConfig, MintInfoConfig, ServerConfig,
+        BuildParams, DatabaseConfig, MintConfig, MintInfoConfig, OnchainConfig, ServerConfig,
         TracingConfig,
     },
     database::{postgres::PostgresDB, Database},
@@ -12,7 +12,7 @@ use monexo_core::{
     blind::{BlindedMessage, BlindedSignature, TotalAmount},
     dhke::Dhke,
     keyset::MintKeyset,
-    primitives::BtcOnchainMeltQuote,
+    primitives::OnchainMeltQuote,
     proof::Proofs,
 };
 use solana_client::nonblocking::rpc_client::RpcClient;
@@ -30,13 +30,10 @@ use tracing::instrument;
 
 #[derive(Clone)]
 pub struct Mint<DB: Database = PostgresDB> {
-    // pub lightning: Arc<dyn Lightning + Send + Sync>,
-    // pub lightning_type: LightningType,
     pub keyset: MintKeyset,
     pub ugx_keyset: MintKeyset,
     pub db: DB,
     pub dhke: Dhke,
-    // pub onchain: Option<Arc<dyn BtcOnchain + Send + Sync>>,
     pub config: MintConfig,
     pub build_params: BuildParams,
 }
@@ -45,16 +42,8 @@ impl<DB> Mint<DB>
 where
     DB: Database,
 {
-    pub fn new(
-        // lightning: Arc<dyn Lightning + Send + Sync>,
-        // lightning_type: LightningType,
-        db: DB,
-        config: MintConfig,
-        build_params: BuildParams,
-    ) -> Self {
+    pub fn new(db: DB, config: MintConfig, build_params: BuildParams) -> Self {
         Self {
-            // lightning,
-            // lightning_type,
             keyset: MintKeyset::new(
                 &config.privatekey.clone(),
                 &config.derivation_path.clone().unwrap_or_default(),
@@ -132,7 +121,7 @@ where
     #[instrument(level = "debug", skip(self, proofs), err)]
     pub async fn melt_onchain(
         &self,
-        quote: &BtcOnchainMeltQuote,
+        quote: &OnchainMeltQuote,
         proofs: &Proofs,
     ) -> Result<Signature, MonexoMintError> {
         let proofs_amount = proofs.total_amount();
@@ -319,7 +308,7 @@ pub struct MintBuilder {
     db_config: Option<DatabaseConfig>,
     mint_info_settings: Option<MintInfoConfig>,
     server_config: Option<ServerConfig>,
-    btc_onchain_config: Option<BtcOnchainConfig>,
+    onchain_config: Option<OnchainConfig>,
     tracing_config: Option<TracingConfig>,
 }
 
@@ -332,7 +321,7 @@ impl MintBuilder {
             db_config: None,
             mint_info_settings: None,
             server_config: None,
-            btc_onchain_config: None,
+            onchain_config: None,
             tracing_config: None,
         }
     }
@@ -367,8 +356,8 @@ impl MintBuilder {
         self
     }
 
-    pub fn with_btc_onchain(mut self, btc_onchain_config: Option<BtcOnchainConfig>) -> Self {
-        self.btc_onchain_config = btc_onchain_config;
+    pub fn with_onchain(mut self, onchain_config: Option<OnchainConfig>) -> Self {
+        self.onchain_config = onchain_config;
         self
     }
 
@@ -391,7 +380,7 @@ impl MintBuilder {
                 self.mint_info_settings.unwrap_or_default(),
                 self.server_config.unwrap_or_default(),
                 db_config,
-                self.btc_onchain_config,
+                self.onchain_config,
                 self.tracing_config,
             ),
             BuildParams::from_env(),

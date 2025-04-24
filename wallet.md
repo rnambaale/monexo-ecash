@@ -1,3 +1,10 @@
+## Install Solana CLI and SPL CLI (Optional)
+```
+sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
+
+cargo install spl-token-cli
+```
+
 ## Wallet creation
 
 ```
@@ -15,7 +22,7 @@ solana address
 
 This will show your wallet address.
 
-#### Creating the USDC ATA
+---
 
 Ensure that the payer has enough SOL.
 ```
@@ -31,7 +38,7 @@ solana config get
 // 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU USDC devnet address
 spl-token create-account <USDC_MINT_ADDRESS> --owner "$(solana address)"
 
- spl-token create-account 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU --owner DHoRFzF1814ymMe9KdViwqXGKiw2JhAp8SiaB5SrrM8L --fee-payer  my-wallet.json
+spl-token create-account 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU --owner DHoRFzF1814ymMe9KdViwqXGKiw2JhAp8SiaB5SrrM8L --fee-payer  my-wallet.json
 
 ```
 This creates a USDC ATA derived from your wallet address for the USDC mint.
@@ -42,4 +49,20 @@ Check the balance to confirm the linkage (This gets that USDC balance):
 spl-token balance <USDC_MINT_ADDRESS> --owner "$(solana address)"
 
 spl-token balance 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU --owner "DHoRFzF1814ymMe9KdViwqXGKiw2JhAp8SiaB5SrrM8L"
+```
+
+### Verify the Token Account
+You can list your token account addresses and their balances:
+```
+spl-token accounts
+```
+
+
+## Wallet DB Ops
+```
+cd monexo-wallet
+sqlx database drop --database-url sqlite://wallet.db
+sqlx database create --database-url sqlite://wallet.db
+sqlx migrate run --database-url sqlite://wallet.db
+cargo sqlx prepare --database-url sqlite://wallet.db
 ```

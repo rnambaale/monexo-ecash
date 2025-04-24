@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use monexo_core::{
-    primitives::{BtcOnchainMeltQuote, BtcOnchainMintQuote},
+    primitives::{OnchainMeltQuote, OnchainMintQuote},
     proof::Proofs,
 };
 
@@ -28,36 +28,36 @@ pub trait Database {
     async fn add_onchain_mint_quote(
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
-        quote: &BtcOnchainMintQuote,
+        quote: &OnchainMintQuote,
     ) -> Result<(), MonexoMintError>;
 
     async fn get_onchain_mint_quote(
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
         key: &Uuid,
-    ) -> Result<BtcOnchainMintQuote, MonexoMintError>;
+    ) -> Result<OnchainMintQuote, MonexoMintError>;
 
     async fn update_onchain_mint_quote(
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
-        quote: &BtcOnchainMintQuote,
+        quote: &OnchainMintQuote,
     ) -> Result<(), MonexoMintError>;
 
     async fn add_onchain_melt_quote(
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
-        quote: &BtcOnchainMeltQuote,
+        quote: &OnchainMeltQuote,
     ) -> Result<(), MonexoMintError>;
 
     async fn get_onchain_melt_quote(
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
         key: &Uuid,
-    ) -> Result<BtcOnchainMeltQuote, MonexoMintError>;
+    ) -> Result<OnchainMeltQuote, MonexoMintError>;
 
     async fn update_onchain_melt_quote(
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
-        quote: &BtcOnchainMeltQuote,
+        quote: &OnchainMeltQuote,
     ) -> Result<(), MonexoMintError>;
 }

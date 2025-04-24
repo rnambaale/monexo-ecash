@@ -33,7 +33,7 @@ pub async fn main() -> anyhow::Result<()> {
         ugx_derivation_path,
         info,
         server,
-        btconchain_backend,
+        onchain_backend,
         database,
         tracing,
     } = MintConfig::read_config_with_defaults();
@@ -47,7 +47,7 @@ pub async fn main() -> anyhow::Result<()> {
         .with_derivation_path(derivation_path)
         .with_ugx_derivation_path(ugx_derivation_path)
         .with_db(Some(database))
-        .with_btc_onchain(btconchain_backend)
+        .with_onchain(onchain_backend)
         .with_tracing(tracing)
         .build()
         .await;
@@ -71,7 +71,7 @@ fn init_tracing(tr: Option<TracingConfig>) -> anyhow::Result<()> {
                     .with_sampler(Sampler::AlwaysOn)
                     .with_resource(opentelemetry_sdk::Resource::new(vec![KeyValue::new(
                         "service.name",
-                        "moksha-mint",
+                        "monexo-mint",
                     )])),
             )
             .install_batch(opentelemetry_sdk::runtime::Tokio)?;

@@ -36,8 +36,8 @@ pub enum MonexoMintError {
     #[error("PrivateKey in keyset not found")]
     PrivateKeyNotFound,
 
-    #[error("MokshaCoreError: {0}")]
-    MokshaCore(#[from] monexo_core::error::MonexoCoreError),
+    #[error("MonexoCoreError: {0}")]
+    MonexoCore(#[from] monexo_core::error::MonexoCoreError),
 
     #[error("Keyset not found {0}")]
     KeysetNotFound(String),
